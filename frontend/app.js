@@ -200,16 +200,102 @@ function renderProjects(manifest) {
 }
 
 /**
- * Convert markdown to HTML (basic implementation)
- * In Phase 4, this will be replaced with a proper library
+ * Configure Mermaid
+ */
+function initMermaid() {
+    if (typeof mermaid !== 'undefined') {
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+        });
+    }
+}
+
+/**
+ * Configure marked.js with syntax highlighting
+ */
+function configureMarked() {
+    if (typeof marked === 'undefined') return;
+
+    // Configure marked to use highlight.js for code blocks
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {
+                    console.error('Highlighting error:', err);
+                }
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true, // GitHub Flavored Markdown
+    });
+}
+
+/**
+ * Render mermaid diagrams in the container
+ */
+async function renderMermaidDiagrams(container) {
+    if (typeof mermaid === 'undefined') return;
+
+    const mermaidBlocks = container.querySelectorAll('code.language-mermaid');
+
+    for (let i = 0; i < mermaidBlocks.length; i++) {
+        const block = mermaidBlocks[i];
+        const code = block.textContent;
+        const id = `mermaid-${Date.now()}-${i}`;
+
+        try {
+            const { svg } = await mermaid.render(id, code);
+            const div = document.createElement('div');
+            div.className = 'mermaid-diagram';
+            div.innerHTML = svg;
+
+            // Replace the code block with the rendered diagram
+            block.parentElement.replaceWith(div);
+        } catch (err) {
+            console.error('Mermaid rendering error:', err);
+            // Leave the code block as-is if rendering fails
+        }
+    }
+}
+
+/**
+ * Convert markdown to HTML with syntax highlighting and diagrams
  */
 function renderMarkdown(content) {
-    // For now, just wrap in a pre tag to preserve formatting
-    // This will be enhanced in Phase 4 with marked.js
-    const pre = document.createElement('pre');
-    pre.className = 'markdown-preview';
-    pre.textContent = content;
-    return pre;
+    // Initialize libraries if not already done
+    configureMarked();
+    initMermaid();
+
+    if (typeof marked === 'undefined') {
+        // Fallback if marked.js didn't load
+        const pre = document.createElement('pre');
+        pre.className = 'markdown-preview';
+        pre.textContent = content;
+        return pre;
+    }
+
+    // Create container
+    const div = document.createElement('div');
+    div.className = 'markdown-body';
+
+    try {
+        // Parse markdown to HTML
+        div.innerHTML = marked.parse(content);
+
+        // Render mermaid diagrams asynchronously
+        renderMermaidDiagrams(div);
+
+    } catch (err) {
+        console.error('Markdown rendering error:', err);
+        div.innerHTML = `<pre>${content}</pre>`;
+    }
+
+    return div;
 }
 
 /**
