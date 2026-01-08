@@ -112,26 +112,138 @@ function hideError() {
     }
 }
 
+// Store the current manifest globally for search and sort
+let currentManifest = null;
+let currentSearchQuery = '';
+let currentSortOption = 'documents-desc';
+
+/**
+ * Sort projects based on the selected option
+ */
+function sortProjects(projects, sortOption) {
+    const sorted = [...projects];
+
+    switch (sortOption) {
+        case 'documents-desc':
+            return sorted.sort((a, b) => b.document_count - a.document_count);
+        case 'documents-asc':
+            return sorted.sort((a, b) => a.document_count - b.document_count);
+        case 'name-asc':
+            return sorted.sort((a, b) => a.name.localeCompare(b.name));
+        case 'name-desc':
+            return sorted.sort((a, b) => b.name.localeCompare(a.name));
+        case 'modified-desc':
+            return sorted.sort((a, b) => {
+                const aTime = a.last_modified ? new Date(a.last_modified) : new Date(0);
+                const bTime = b.last_modified ? new Date(b.last_modified) : new Date(0);
+                return bTime - aTime;
+            });
+        case 'modified-asc':
+            return sorted.sort((a, b) => {
+                const aTime = a.last_modified ? new Date(a.last_modified) : new Date(0);
+                const bTime = b.last_modified ? new Date(b.last_modified) : new Date(0);
+                return aTime - bTime;
+            });
+        default:
+            return sorted;
+    }
+}
+
+/**
+ * Filter projects and documents based on search query
+ */
+function filterProjects(projects, query) {
+    if (!query || query.trim() === '') {
+        return projects;
+    }
+
+    const lowerQuery = query.toLowerCase();
+
+    return projects
+        .map(project => {
+            // Check if project name matches
+            const projectMatches = project.name.toLowerCase().includes(lowerQuery);
+
+            // Filter documents that match
+            const matchedDocuments = project.documents.filter(doc =>
+                doc.name.toLowerCase().includes(lowerQuery) ||
+                doc.relative_path.toLowerCase().includes(lowerQuery)
+            );
+
+            // Include project if name matches OR has matching documents
+            if (projectMatches || matchedDocuments.length > 0) {
+                return {
+                    ...project,
+                    documents: projectMatches ? project.documents : matchedDocuments,
+                    document_count: projectMatches ? project.document_count : matchedDocuments.length
+                };
+            }
+
+            return null;
+        })
+        .filter(project => project !== null);
+}
+
+/**
+ * Update search results display
+ */
+function updateSearchResults(filteredProjects, totalProjects, query) {
+    const resultsEl = document.getElementById('search-results');
+    const resultsCountEl = document.getElementById('results-count');
+
+    if (!resultsEl || !resultsCountEl) return;
+
+    if (query && query.trim() !== '') {
+        const projectCount = filteredProjects.length;
+        const documentCount = filteredProjects.reduce((sum, p) => sum + p.document_count, 0);
+
+        resultsCountEl.textContent = `Found ${projectCount} project${projectCount !== 1 ? 's' : ''} and ${documentCount} document${documentCount !== 1 ? 's' : ''} matching "${query}"`;
+        resultsEl.style.display = 'block';
+    } else {
+        resultsEl.style.display = 'none';
+    }
+}
+
 /**
  * Render the project list on index.html
  */
-function renderProjects(manifest) {
+function renderProjects(manifest, searchQuery = '', sortOption = 'documents-desc') {
     const container = document.getElementById('projects-container');
 
     if (!container) return;
 
-    // Update stats
+    // Store current manifest
+    currentManifest = manifest;
+    currentSearchQuery = searchQuery;
+    currentSortOption = sortOption;
+
+    // Update stats (always show totals)
     document.getElementById('project-count').textContent = manifest.project_count;
     document.getElementById('document-count').textContent = manifest.document_count;
     document.getElementById('scan-time').textContent = `Last scanned: ${formatRelativeTime(manifest.scan_time)}`;
 
+    // Filter projects based on search query
+    let filteredProjects = filterProjects(manifest.projects, searchQuery);
+
+    // Update search results display
+    updateSearchResults(filteredProjects, manifest.projects.length, searchQuery);
+
+    // Sort projects
+    const sortedProjects = sortProjects(filteredProjects, sortOption);
+
     // Clear loading message
     container.innerHTML = '';
 
-    // Sort projects by document count (descending)
-    const sortedProjects = [...manifest.projects].sort((a, b) =>
-        b.document_count - a.document_count
-    );
+    // Show message if no results
+    if (sortedProjects.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.innerHTML = `
+            <p>No projects or documents found${searchQuery ? ` matching "${searchQuery}"` : ''}.</p>
+        `;
+        container.appendChild(noResults);
+        return;
+    }
 
     // Render each project
     sortedProjects.forEach(project => {
@@ -313,13 +425,36 @@ async function loadDocument(path, projectId) {
         // Fetch document
         const doc = await fetchDocument(path);
 
-        // Update breadcrumb
+        // Update breadcrumb with full path
         if (breadcrumbEl) {
-            breadcrumbEl.innerHTML = `
-                <span class="breadcrumb-item">${projectId || 'Project'}</span>
-                <span class="breadcrumb-separator">›</span>
-                <span class="breadcrumb-item">${doc.name}</span>
-            `;
+            // Get the relative path from the manifest to show directory structure
+            let breadcrumbHTML = `<span class="breadcrumb-item">${projectId || 'Project'}</span>`;
+
+            // Parse the path to show directory structure
+            const pathParts = path.split('/');
+            const projectIndex = pathParts.findIndex(part => part === projectId);
+
+            if (projectIndex !== -1) {
+                // Show directories after the project name
+                const relativeParts = pathParts.slice(projectIndex + 1);
+
+                relativeParts.forEach((part, index) => {
+                    breadcrumbHTML += `<span class="breadcrumb-separator">›</span>`;
+
+                    // Last part is the file, others are directories
+                    if (index === relativeParts.length - 1) {
+                        breadcrumbHTML += `<span class="breadcrumb-item breadcrumb-file">${part}</span>`;
+                    } else {
+                        breadcrumbHTML += `<span class="breadcrumb-item breadcrumb-dir">${part}</span>`;
+                    }
+                });
+            } else {
+                // Fallback if we can't parse the path
+                breadcrumbHTML += `<span class="breadcrumb-separator">›</span>`;
+                breadcrumbHTML += `<span class="breadcrumb-item">${doc.name}</span>`;
+            }
+
+            breadcrumbEl.innerHTML = breadcrumbHTML;
         }
 
         // Update page title
@@ -348,6 +483,70 @@ async function initIndexPage() {
         const manifest = await fetchManifest();
         renderProjects(manifest);
 
+        // Set up search input
+        const searchInput = document.getElementById('search-input');
+        const clearSearchBtn = document.getElementById('clear-search');
+
+        if (searchInput) {
+            // Debounce search input
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+
+                // Show/hide clear button
+                if (clearSearchBtn) {
+                    clearSearchBtn.style.display = query ? 'flex' : 'none';
+                }
+
+                // Debounce search
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (currentManifest) {
+                        renderProjects(currentManifest, query, currentSortOption);
+                    }
+                }, 300);
+            });
+
+            // Handle keyboard shortcuts
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    if (clearSearchBtn) {
+                        clearSearchBtn.style.display = 'none';
+                    }
+                    if (currentManifest) {
+                        renderProjects(currentManifest, '', currentSortOption);
+                    }
+                }
+            });
+        }
+
+        // Set up clear search button
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', () => {
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
+                clearSearchBtn.style.display = 'none';
+                if (currentManifest) {
+                    renderProjects(currentManifest, '', currentSortOption);
+                }
+            });
+        }
+
+        // Set up sort select
+        const sortSelect = document.getElementById('sort-select');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', (e) => {
+                const sortOption = e.target.value;
+                const query = searchInput ? searchInput.value : '';
+                if (currentManifest) {
+                    renderProjects(currentManifest, query, sortOption);
+                }
+            });
+        }
+
         // Set up refresh button
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
@@ -358,7 +557,9 @@ async function initIndexPage() {
                 try {
                     await triggerScan();
                     const newManifest = await fetchManifest();
-                    renderProjects(newManifest);
+                    const query = searchInput ? searchInput.value : '';
+                    const sortOption = sortSelect ? sortSelect.value : 'documents-desc';
+                    renderProjects(newManifest, query, sortOption);
                 } catch (error) {
                     showError(`Failed to refresh: ${error.message}`);
                 } finally {
@@ -367,6 +568,14 @@ async function initIndexPage() {
                 }
             });
         }
+
+        // Global keyboard shortcut: / to focus search
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && searchInput && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+        });
 
     } catch (error) {
         showError(`Failed to load projects: ${error.message}`);

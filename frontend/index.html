@@ -29,6 +29,38 @@
             </div>
         </div>
 
+        <div class="controls">
+            <div class="search-box">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <input
+                    type="text"
+                    id="search-input"
+                    class="search-input"
+                    placeholder="Search projects and documents..."
+                    autocomplete="off"
+                />
+                <button id="clear-search" class="clear-search" style="display: none;" aria-label="Clear search">×</button>
+            </div>
+
+            <div class="sort-controls">
+                <label for="sort-select" class="sort-label">Sort by:</label>
+                <select id="sort-select" class="sort-select">
+                    <option value="documents-desc">Most Documents</option>
+                    <option value="documents-asc">Fewest Documents</option>
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="modified-desc">Recently Updated</option>
+                    <option value="modified-asc">Least Recently Updated</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="search-results" class="search-results" style="display: none;">
+            <span id="results-count"></span>
+        </div>
+
         <div id="error-message" class="error-message" style="display: none;"></div>
 
         <div id="projects-container" class="projects-container">
