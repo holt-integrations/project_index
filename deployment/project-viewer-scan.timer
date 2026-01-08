@@ -1,0 +1,16 @@
+[Unit]
+Description=Project Viewer Manifest Scan Timer
+Requires=project-viewer-scan.service
+
+[Timer]
+# Run 5 minutes after boot
+OnBootSec=5min
+
+# Run every hour
+OnUnitActiveSec=1h
+
+# Persistent: if system was off during scheduled run, run on next boot
+Persistent=true
+
+[Install]
+WantedBy=timers.target

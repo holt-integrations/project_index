@@ -82,17 +82,17 @@ python backend/scanner.py
 
 5. Start the development server:
 ```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 6. Open your browser to:
 ```
-http://localhost:8000
+http://localhost:8001
 ```
 
 Or from another device on your network:
 ```
-http://<raspberry-pi-ip>:8000
+http://<raspberry-pi-ip>:8001
 ```
 
 ## Project Structure
@@ -110,12 +110,20 @@ project_index/
 │   ├── viewer.html          # Document viewer
 │   ├── app.js               # Frontend logic
 │   └── styles.css           # Styling
+├── deployment/
+│   ├── deploy.sh            # Automated deployment script
+│   ├── uninstall.sh         # Uninstall script
+│   ├── status.sh            # Status check script
+│   ├── project-viewer.service        # Systemd service file
+│   ├── project-viewer-scan.service   # Systemd scan service
+│   └── project-viewer-scan.timer     # Systemd timer
 ├── data/
 │   └── manifest.json        # Generated project index (auto-generated)
 ├── docs/
 │   ├── draft.md             # Original requirements
 │   ├── plan.md              # Implementation plan
-│   └── deferred.md          # Post-MVP features
+│   ├── deferred.md          # Post-MVP features
+│   └── markdown-test.md     # Markdown rendering test
 └── README.md                # This file
 ```
 
@@ -126,7 +134,7 @@ Configuration is managed in `backend/config.py`. Key settings:
 - **PROJECTS_DIR**: Base directory to scan (default: `~/Projects`)
 - **EXCLUDED_DIRS**: Directories to skip during scanning
 - **HOST**: Server host (default: `0.0.0.0`)
-- **PORT**: Server port (default: `8000`)
+- **PORT**: Server port (default: `8001`)
 
 ## Development
 
@@ -147,83 +155,84 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 python backend/scanner.py
 
 # Or trigger via API (when server is running)
-curl http://localhost:8000/api/scan
+curl http://localhost:8001/api/scan
 ```
 
 ### Testing
 
 ```bash
 # Test API endpoints
-curl http://localhost:8000/api/manifest
-curl http://localhost:8000/api/projects
+curl http://localhost:8001/api/manifest
+curl http://localhost:8001/api/projects
 ```
 
 ## Deployment
 
-### Systemd Service (Production)
+### Automated Deployment (Recommended)
 
-1. Create service file at `/etc/systemd/system/project-viewer.service`:
-
-```ini
-[Unit]
-Description=Project Viewer Web Service
-After=network.target
-
-[Service]
-Type=simple
-User=jared
-WorkingDirectory=/home/jared/Projects/project_index
-Environment="PATH=/home/jared/Projects/project_index/.venv/bin"
-ExecStart=/home/jared/Projects/project_index/.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-2. Create timer for periodic manifest updates at `/etc/systemd/system/project-viewer-scan.timer`:
-
-```ini
-[Unit]
-Description=Project Viewer Manifest Scan Timer
-
-[Timer]
-OnBootSec=5min
-OnUnitActiveSec=1h
-
-[Install]
-WantedBy=timers.target
-```
-
-3. Create scan service at `/etc/systemd/system/project-viewer-scan.service`:
-
-```ini
-[Unit]
-Description=Project Viewer Manifest Scan
-
-[Service]
-Type=oneshot
-User=jared
-WorkingDirectory=/home/jared/Projects/project_index
-Environment="PATH=/home/jared/Projects/project_index/.venv/bin"
-ExecStart=/home/jared/Projects/project_index/.venv/bin/python backend/scanner.py
-```
-
-4. Enable and start services:
+The easiest way to deploy Project Viewer as a systemd service:
 
 ```bash
+cd /home/jared/Projects/project_index
+./deployment/deploy.sh
+```
+
+This script will:
+1. Check Python version
+2. Create virtual environment (if needed)
+3. Install dependencies
+4. Run initial project scan
+5. Install systemd service files
+6. Enable and start services
+7. Verify installation
+
+After deployment, the service will:
+- Start automatically on boot
+- Restart on failure
+- Scan projects every hour
+- Be accessible at `http://localhost:8001`
+
+### Deployment Management
+
+Check service status:
+```bash
+./deployment/status.sh
+```
+
+View logs:
+```bash
+sudo journalctl -u project-viewer -f
+```
+
+Restart service:
+```bash
+sudo systemctl restart project-viewer
+```
+
+Run manual scan:
+```bash
+sudo systemctl start project-viewer-scan
+```
+
+Uninstall:
+```bash
+./deployment/uninstall.sh
+```
+
+### Manual Deployment
+
+If you prefer manual deployment, systemd service files are provided in the `deployment/` directory:
+- `project-viewer.service` - Main web service
+- `project-viewer-scan.service` - Scan service
+- `project-viewer-scan.timer` - Timer for periodic scans
+
+Copy these to `/etc/systemd/system/` and enable them with:
+
+```bash
+sudo cp deployment/*.service deployment/*.timer /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable project-viewer.service
-sudo systemctl enable project-viewer-scan.timer
-sudo systemctl start project-viewer.service
-sudo systemctl start project-viewer-scan.timer
-```
-
-5. Check status:
-
-```bash
-sudo systemctl status project-viewer
-sudo systemctl status project-viewer-scan.timer
+sudo systemctl enable --now project-viewer.service
+sudo systemctl enable --now project-viewer-scan.timer
 ```
 
 ## API Endpoints
@@ -241,8 +250,8 @@ sudo systemctl status project-viewer-scan.timer
 ### Port Already in Use
 
 ```bash
-# Find process using port 8000
-lsof -i :8000
+# Find process using port 8001
+lsof -i :8001
 
 # Kill the process
 kill -9 <PID>
@@ -287,6 +296,17 @@ Jared Holt
 
 ## Status
 
-**Current Phase**: Phase 0 - Project Setup (In Progress)
+**Current Phase**: Phase 6 - Automation and Deployment (Complete)
+
+**Completed Features**:
+- ✅ Project scanning and manifest generation
+- ✅ FastAPI backend with RESTful API
+- ✅ Frontend with search and navigation
+- ✅ Rich markdown rendering with syntax highlighting
+- ✅ Mermaid diagram support
+- ✅ Systemd service integration
+- ✅ Automated deployment scripts
+
+**Next Phase**: Phase 7 - Polish and Testing
 
 See `docs/plan.md` for detailed implementation roadmap.
