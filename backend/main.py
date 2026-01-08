@@ -68,19 +68,26 @@ def is_path_safe(file_path: Path, base_dir: Path) -> bool:
 
 @app.get("/")
 async def root():
-    """Root endpoint - will serve frontend in the future."""
-    return {
-        "message": "Project Viewer API",
-        "version": "0.1.0",
-        "endpoints": {
-            "manifest": "/api/manifest",
-            "projects": "/api/projects",
-            "project_detail": "/api/projects/{project_id}",
-            "document": "/api/document?path=<file_path>",
-            "scan": "/api/scan",
-            "health": "/health"
+    """Serve the main index page."""
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+    index_path = frontend_dir / "index.html"
+
+    if index_path.exists():
+        return FileResponse(index_path)
+    else:
+        # Fallback to API info if frontend not available
+        return {
+            "message": "Project Viewer API",
+            "version": "0.1.0",
+            "endpoints": {
+                "manifest": "/api/manifest",
+                "projects": "/api/projects",
+                "project_detail": "/api/projects/{project_id}",
+                "document": "/api/document?path=<file_path>",
+                "scan": "/api/scan",
+                "health": "/health"
+            }
         }
-    }
 
 
 @app.get("/health")
@@ -244,9 +251,42 @@ async def trigger_scan():
         )
 
 
-# Mount static files for frontend (will be added in Phase 3)
-# Uncomment this when frontend files are ready
-# app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+# Serve viewer page
+@app.get("/viewer.html")
+async def viewer_page():
+    """Serve the document viewer page."""
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+    viewer_path = frontend_dir / "viewer.html"
+
+    if viewer_path.exists():
+        return FileResponse(viewer_path)
+    else:
+        raise HTTPException(status_code=404, detail="Viewer page not found")
+
+
+# Serve static assets (CSS, JS)
+@app.get("/styles.css")
+async def serve_styles():
+    """Serve CSS file."""
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+    css_path = frontend_dir / "styles.css"
+
+    if css_path.exists():
+        return FileResponse(css_path, media_type="text/css")
+    else:
+        raise HTTPException(status_code=404, detail="CSS file not found")
+
+
+@app.get("/app.js")
+async def serve_js():
+    """Serve JavaScript file."""
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+    js_path = frontend_dir / "app.js"
+
+    if js_path.exists():
+        return FileResponse(js_path, media_type="application/javascript")
+    else:
+        raise HTTPException(status_code=404, detail="JavaScript file not found")
 
 
 if __name__ == "__main__":

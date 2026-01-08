@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Project Viewer</h1>
+                <a href="/" class="btn-back">← Back to Projects</a>
+            </div>
+        </header>
+
+        <div id="breadcrumb" class="breadcrumb"></div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
+        <div id="document-container" class="document-container">
+            <div class="loading">Loading document...</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize viewer on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const docPath = urlParams.get('path');
+            const projectId = urlParams.get('project');
+
+            if (docPath) {
+                loadDocument(docPath, projectId);
+            } else {
+                showError('No document path specified');
+            }
+        });
+    </script>
+</body>
+</html>
