@@ -9,8 +9,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from models import Document, Project, Manifest
-import config
+try:
+    # Try relative imports (when imported as a module)
+    from .models import Document, Project, Manifest
+    from . import config
+except ImportError:
+    # Fall back to absolute imports (when run as a script)
+    from models import Document, Project, Manifest
+    import config
 
 
 def is_excluded_dir(dir_path: Path) -> bool:

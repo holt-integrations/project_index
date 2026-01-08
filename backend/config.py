@@ -62,7 +62,7 @@ MANIFEST_PATH = Path(__file__).parent.parent / "data" / "manifest.json"
 
 # Server configuration
 HOST = "0.0.0.0"
-PORT = 8000
+PORT = 8001  # Using 8001 since 8000 is used by signals project
 
 # Maximum file size to read (in bytes) - 10MB
 MAX_FILE_SIZE = 10 * 1024 * 1024
