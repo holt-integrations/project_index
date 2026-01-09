@@ -8,7 +8,7 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 
 - [x] Dark Mode
 - [x] Bookmarks and Favorites
-- [ ] Interactive Table of Contents
+- [x] Interactive Table of Contents
 - [ ] Code Block Enhancements
 - [ ] Git History View
 - [ ] Full-Text Search
