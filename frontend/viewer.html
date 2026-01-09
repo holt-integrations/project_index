@@ -51,8 +51,24 @@
 
         <div id="error-message" class="error-message" style="display: none;"></div>
 
-        <div id="document-container" class="document-container">
-            <div class="loading">Loading document...</div>
+        <div class="content-with-toc">
+            <aside id="toc-sidebar" class="toc-sidebar" style="display: none;">
+                <div class="toc-header">
+                    <h3>Table of Contents</h3>
+                    <button id="toc-close" class="toc-close" aria-label="Close TOC">×</button>
+                </div>
+                <nav id="toc-nav" class="toc-nav"></nav>
+            </aside>
+
+            <button id="toc-toggle" class="toc-toggle" aria-label="Toggle Table of Contents" title="Toggle Table of Contents (T)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+            </button>
+
+            <div id="document-container" class="document-container">
+                <div class="loading">Loading document...</div>
+            </div>
         </div>
     </div>
 
@@ -118,6 +134,36 @@
                         }
                     });
                 }
+
+                // Set up TOC toggle button
+                const tocToggle = document.getElementById('toc-toggle');
+                if (tocToggle) {
+                    tocToggle.addEventListener('click', toggleTOC);
+                }
+
+                // Set up TOC close button
+                const tocClose = document.getElementById('toc-close');
+                if (tocClose) {
+                    tocClose.addEventListener('click', () => {
+                        const tocSidebar = document.getElementById('toc-sidebar');
+                        if (tocSidebar) {
+                            tocSidebar.classList.remove('visible');
+                        }
+                    });
+                }
+
+                // Keyboard shortcut: T to toggle TOC
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 't' || e.key === 'T') {
+                        // Don't trigger if user is typing in an input
+                        if (document.activeElement.tagName !== 'INPUT' &&
+                            document.activeElement.tagName !== 'TEXTAREA') {
+                            e.preventDefault();
+                            toggleTOC();
+                        }
+                    }
+                });
+
             } else {
                 showError('No document path specified');
             }

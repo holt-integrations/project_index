@@ -1061,3 +1061,318 @@ header h1 {
         gap: 0.25rem;
     }
 }
+
+/* ============================================
+   Table of Contents (TOC)
+   ============================================ */
+
+.content-with-toc {
+    position: relative;
+    display: flex;
+    gap: 2rem;
+}
+
+/* TOC Sidebar */
+.toc-sidebar {
+    position: sticky;
+    top: 1rem;
+    width: 280px;
+    max-height: calc(100vh - 2rem);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toc-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.toc-sidebar::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 3px;
+}
+
+.toc-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.toc-sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+.toc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.toc-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.toc-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.toc-close:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* TOC Navigation */
+.toc-nav {
+    overflow-y: auto;
+}
+
+.toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc-list .toc-list {
+    padding-left: 1rem;
+    margin-top: 0.25rem;
+}
+
+.toc-item {
+    position: relative;
+    margin: 0.25rem 0;
+}
+
+.toc-item.collapsed > .toc-list {
+    display: none;
+}
+
+.toc-item.collapsed > .toc-collapse-toggle {
+    transform: rotate(-90deg);
+}
+
+.toc-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    transition: all 0.2s ease;
+    gap: 0.5rem;
+}
+
+.toc-link:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.toc-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 500;
+}
+
+.toc-link.active .toc-time {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.toc-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.toc-time {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.toc-collapse-toggle {
+    position: absolute;
+    left: -1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 0.625rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toc-collapse-toggle:hover {
+    color: var(--text-primary);
+}
+
+/* TOC Toggle Button (floating) */
+.toc-toggle {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 48px;
+    height: 48px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: all 0.3s ease;
+}
+
+.toc-toggle:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile: Hide sidebar by default, show when .visible */
+@media (max-width: 1024px) {
+    .toc-sidebar {
+        position: fixed;
+        top: 0;
+        left: -320px;
+        width: 280px;
+        height: 100vh;
+        max-height: 100vh;
+        z-index: 999;
+        border-radius: 0;
+        padding: 1.5rem;
+        margin: 0;
+    }
+
+    .toc-sidebar.visible {
+        left: 0;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .content-with-toc {
+        flex-direction: column;
+    }
+
+    .toc-toggle {
+        display: flex;
+    }
+
+    .toc-close {
+        display: flex;
+    }
+}
+
+/* Desktop: Always show sidebar, hide toggle */
+@media (min-width: 1025px) {
+    .toc-toggle {
+        display: none;
+    }
+
+    .toc-close {
+        display: none;
+    }
+
+    .toc-sidebar {
+        display: block !important;
+    }
+}
+
+/* Adjust document container width when TOC is present */
+.content-with-toc .document-container {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Smooth scroll behavior */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Add scroll padding to account for fixed header */
+html {
+    scroll-padding-top: 5rem;
+}
+
+/* TOC Item Level Indentation (alternative to nested padding) */
+.toc-item[data-level="1"] .toc-link {
+    font-weight: 500;
+}
+
+.toc-item[data-level="2"] .toc-link {
+    font-size: 0.8125rem;
+}
+
+.toc-item[data-level="3"] .toc-link {
+    font-size: 0.8125rem;
+    opacity: 0.9;
+}
+
+.toc-item[data-level="4"] .toc-link,
+.toc-item[data-level="5"] .toc-link,
+.toc-item[data-level="6"] .toc-link {
+    font-size: 0.75rem;
+    opacity: 0.85;
+}
+
+/* Animation for TOC appearance */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.toc-sidebar {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .toc-sidebar {
+        width: 260px;
+        left: -300px;
+    }
+
+    .toc-toggle {
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 44px;
+        height: 44px;
+    }
+}

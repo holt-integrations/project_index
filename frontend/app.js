@@ -686,6 +686,271 @@ function renderMarkdown(content) {
 }
 
 /**
+ * Table of Contents (TOC) Management
+ */
+
+// Generate a slug from heading text for IDs
+function generateSlug(text) {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/--+/g, '-')
+        .trim();
+}
+
+// Calculate reading time (average 200 words per minute)
+function calculateReadingTime(text) {
+    const words = text.trim().split(/\s+/).length;
+    const minutes = Math.ceil(words / 200);
+    return minutes === 1 ? '1 min' : `${minutes} mins`;
+}
+
+// Extract headings from the document container
+function extractHeadings(container) {
+    const headings = [];
+    const headingElements = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+    headingElements.forEach((heading, index) => {
+        const level = parseInt(heading.tagName.substring(1));
+        const text = heading.textContent.trim();
+        const slug = generateSlug(text);
+
+        // Add unique ID to heading if it doesn't have one
+        if (!heading.id) {
+            heading.id = slug || `heading-${index}`;
+        }
+
+        // Get text content until next heading of same or higher level
+        let nextElement = heading.nextElementSibling;
+        let sectionText = '';
+
+        while (nextElement) {
+            const isHeading = /^H[1-6]$/.test(nextElement.tagName);
+            if (isHeading) {
+                const nextLevel = parseInt(nextElement.tagName.substring(1));
+                if (nextLevel <= level) break;
+            }
+            sectionText += nextElement.textContent + ' ';
+            nextElement = nextElement.nextElementSibling;
+        }
+
+        headings.push({
+            id: heading.id,
+            level,
+            text,
+            readingTime: calculateReadingTime(sectionText),
+            element: heading
+        });
+    });
+
+    return headings;
+}
+
+// Build hierarchical TOC structure
+function buildTocHierarchy(headings) {
+    const root = { children: [] };
+    const stack = [root];
+
+    headings.forEach(heading => {
+        const item = { ...heading, children: [] };
+
+        // Pop stack until we find the right parent
+        while (stack.length > 1 && stack[stack.length - 1].level >= heading.level) {
+            stack.pop();
+        }
+
+        // Add to parent's children
+        stack[stack.length - 1].children.push(item);
+        stack.push(item);
+    });
+
+    return root.children;
+}
+
+// Render TOC HTML
+function renderTocItem(item, parentCollapsed = false) {
+    const hasChildren = item.children && item.children.length > 0;
+    const li = document.createElement('li');
+    li.className = 'toc-item';
+    li.setAttribute('data-level', item.level);
+
+    const link = document.createElement('a');
+    link.href = `#${item.id}`;
+    link.className = 'toc-link';
+    link.setAttribute('data-target', item.id);
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'toc-text';
+    textSpan.textContent = item.text;
+    link.appendChild(textSpan);
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'toc-time';
+    timeSpan.textContent = item.readingTime;
+    link.appendChild(timeSpan);
+
+    li.appendChild(link);
+
+    // Add collapse toggle if has children
+    if (hasChildren) {
+        const toggle = document.createElement('button');
+        toggle.className = 'toc-collapse-toggle';
+        toggle.innerHTML = '▼';
+        toggle.setAttribute('aria-label', 'Toggle section');
+
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            li.classList.toggle('collapsed');
+        });
+
+        li.appendChild(toggle);
+
+        const childList = document.createElement('ul');
+        childList.className = 'toc-list';
+
+        item.children.forEach(child => {
+            childList.appendChild(renderTocItem(child));
+        });
+
+        li.appendChild(childList);
+    }
+
+    return li;
+}
+
+// Generate and display TOC
+function generateTOC(container) {
+    const tocNav = document.getElementById('toc-nav');
+    const tocSidebar = document.getElementById('toc-sidebar');
+
+    if (!tocNav || !container) return;
+
+    // Extract headings
+    const headings = extractHeadings(container);
+
+    // If no headings, hide TOC
+    if (headings.length === 0) {
+        if (tocSidebar) tocSidebar.style.display = 'none';
+        return;
+    }
+
+    // Build hierarchy
+    const hierarchy = buildTocHierarchy(headings);
+
+    // Render TOC
+    tocNav.innerHTML = '';
+    const rootList = document.createElement('ul');
+    rootList.className = 'toc-list toc-root';
+
+    hierarchy.forEach(item => {
+        rootList.appendChild(renderTocItem(item));
+    });
+
+    tocNav.appendChild(rootList);
+
+    // Show TOC if we have headings
+    if (tocSidebar) {
+        tocSidebar.style.display = 'block';
+    }
+
+    // Set up smooth scrolling
+    setupTocScrolling();
+
+    // Set up scroll spy
+    setupScrollSpy(headings);
+}
+
+// Setup smooth scrolling for TOC links
+function setupTocScrolling() {
+    const tocLinks = document.querySelectorAll('.toc-link');
+
+    tocLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('data-target');
+            const targetElement = document.getElementById(targetId);
+
+            if (targetElement) {
+                targetElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+
+                // Update active state
+                document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            }
+        });
+    });
+}
+
+// Setup scroll spy to highlight current section
+function setupScrollSpy(headings) {
+    let ticking = false;
+
+    function updateActiveSection() {
+        const scrollPosition = window.scrollY + 100; // Offset for header
+
+        // Find the current section
+        let currentHeading = null;
+        for (let i = headings.length - 1; i >= 0; i--) {
+            const heading = headings[i];
+            if (heading.element.offsetTop <= scrollPosition) {
+                currentHeading = heading;
+                break;
+            }
+        }
+
+        // Update active states
+        document.querySelectorAll('.toc-link').forEach(link => {
+            link.classList.remove('active');
+        });
+
+        if (currentHeading) {
+            const activeLink = document.querySelector(`.toc-link[data-target="${currentHeading.id}"]`);
+            if (activeLink) {
+                activeLink.classList.add('active');
+
+                // Scroll TOC to show active item
+                activeLink.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+        }
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                updateActiveSection();
+            });
+            ticking = true;
+        }
+    });
+
+    // Initial update
+    updateActiveSection();
+}
+
+// Toggle TOC sidebar
+function toggleTOC() {
+    const tocSidebar = document.getElementById('toc-sidebar');
+    if (tocSidebar) {
+        const isVisible = tocSidebar.classList.contains('visible');
+        if (isVisible) {
+            tocSidebar.classList.remove('visible');
+        } else {
+            tocSidebar.classList.add('visible');
+        }
+    }
+}
+
+/**
  * Load and display a document
  */
 async function loadDocument(path, projectId) {
@@ -741,6 +1006,12 @@ async function loadDocument(path, projectId) {
         // Render markdown content
         const rendered = renderMarkdown(doc.content);
         container.appendChild(rendered);
+
+        // Generate TOC after markdown is rendered
+        // Wait a bit for mermaid diagrams to render
+        setTimeout(() => {
+            generateTOC(rendered);
+        }, 100);
 
     } catch (error) {
         showError(`Failed to load document: ${error.message}`);
