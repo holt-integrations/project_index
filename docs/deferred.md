@@ -14,15 +14,19 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - [ ] Full-Text Search
 - [ ] PDF Export
 
+**Tweaks**
+
+- [ [ Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
+- [ ] ToC: default to fully collapsed
+
 **Idea Bank**
 
+- "Top of doc" convenience button
+- Open terminal at location
+- Open [editor] at location
 - Markdown editor to allow making changes/updates within the app
 	- Optional integration with Apostrophe?
 - Pretty URLs (routing?)
-
-**Tweaks**
-
-- ToC: default to fully collapsed
 
 ---
 

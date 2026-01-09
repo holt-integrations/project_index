@@ -1404,8 +1404,14 @@ async function initIndexPage() {
                 // Debounce search
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    if (currentManifest) {
-                        renderProjects(currentManifest, query, currentSortOption);
+                    if (currentSearchMode === 'files') {
+                        // File name search
+                        if (currentManifest) {
+                            renderProjects(currentManifest, query, currentSortOption);
+                        }
+                    } else {
+                        // Content search
+                        performContentSearch(query);
                     }
                 }, 300);
             });
@@ -1446,6 +1452,32 @@ async function initIndexPage() {
                 const query = searchInput ? searchInput.value : '';
                 if (currentManifest) {
                     renderProjects(currentManifest, query, sortOption);
+                }
+            });
+        }
+
+        // Set up search mode toggle
+        const filesModeBtn = document.getElementById('search-mode-files');
+        const contentModeBtn = document.getElementById('search-mode-content');
+
+        if (filesModeBtn) {
+            filesModeBtn.addEventListener('click', () => {
+                switchSearchMode('files');
+                // Re-run search in new mode
+                const query = searchInput ? searchInput.value : '';
+                if (query && currentManifest) {
+                    renderProjects(currentManifest, query, currentSortOption);
+                }
+            });
+        }
+
+        if (contentModeBtn) {
+            contentModeBtn.addEventListener('click', () => {
+                switchSearchMode('content');
+                // Re-run search in new mode
+                const query = searchInput ? searchInput.value : '';
+                if (query) {
+                    performContentSearch(query);
                 }
             });
         }
@@ -1645,6 +1677,151 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Full-Text Search Functions
+ */
+
+let currentSearchMode = 'files';  // 'files' or 'content'
+
+async function searchContent(query, projectFilter = null) {
+    try {
+        let url = `${API_BASE}/api/search?q=${encodeURIComponent(query)}`;
+        if (projectFilter) {
+            url += `&project=${encodeURIComponent(projectFilter)}`;
+        }
+
+        const response = await fetch(url);
+
+        if (response.status === 501) {
+            // Search not enabled
+            showError('Full-text search is not enabled. Set ENABLE_FULL_TEXT_SEARCH=True in backend/config.py');
+            return { total_results: 0, results: [] };
+        }
+
+        if (response.status === 503) {
+            // Index not built
+            showError('Search index not found. Please run a scan to build the index.');
+            return { total_results: 0, results: [] };
+        }
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+
+    } catch (error) {
+        console.error('Search error:', error);
+        showError(`Search failed: ${error.message}`);
+        return { total_results: 0, results: [] };
+    }
+}
+
+function renderContentSearchResults(data) {
+    const container = document.getElementById('content-search-results');
+    const projectsContainer = document.getElementById('projects-container');
+    const searchResults = document.getElementById('search-results');
+
+    // Hide projects, show content results
+    projectsContainer.style.display = 'none';
+    searchResults.style.display = 'none';
+    container.style.display = 'block';
+
+    container.innerHTML = '';
+
+    if (data.total_results === 0) {
+        container.innerHTML = `
+            <div class="no-search-results">
+                <p>No results found for "${escapeHtml(data.query)}"</p>
+                <p class="search-tip">Try different keywords or use Files mode to search by filename.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const header = document.createElement('div');
+    header.className = 'content-search-header';
+    header.innerHTML = `
+        <h3>Search Results</h3>
+        <p>${data.total_results} result${data.total_results !== 1 ? 's' : ''} for "${escapeHtml(data.query)}"</p>
+    `;
+    container.appendChild(header);
+
+    const resultsList = document.createElement('div');
+    resultsList.className = 'content-search-list';
+
+    data.results.forEach(result => {
+        const item = document.createElement('div');
+        item.className = 'content-search-item';
+
+        // Highlight search terms in snippet
+        const highlightedSnippet = highlightSearchTerms(result.snippet, data.query);
+
+        item.innerHTML = `
+            <div class="result-header">
+                <span class="result-project-badge">${escapeHtml(result.project_id)}</span>
+                <a href="/viewer.html?path=${encodeURIComponent(result.path)}&project=${encodeURIComponent(result.project_id)}&search=${encodeURIComponent(data.query)}"
+                   class="result-title">${escapeHtml(result.name)}</a>
+            </div>
+            <div class="result-snippet">${highlightedSnippet}</div>
+            <div class="result-path">${escapeHtml(result.path)}</div>
+        `;
+
+        resultsList.appendChild(item);
+    });
+
+    container.appendChild(resultsList);
+}
+
+function highlightSearchTerms(text, query) {
+    // Simple term highlighting
+    // Note: snippet already has <mark> tags from SQLite, just return as-is
+    return text;
+}
+
+function switchSearchMode(mode) {
+    currentSearchMode = mode;
+
+    const filesBtn = document.getElementById('search-mode-files');
+    const contentBtn = document.getElementById('search-mode-content');
+    const searchInput = document.getElementById('search-input');
+
+    if (mode === 'files') {
+        filesBtn.classList.add('active');
+        contentBtn.classList.remove('active');
+        searchInput.placeholder = 'Search projects and documents...';
+
+        // Hide content results, show projects
+        document.getElementById('content-search-results').style.display = 'none';
+        document.getElementById('projects-container').style.display = 'grid';
+
+    } else {
+        filesBtn.classList.remove('active');
+        contentBtn.classList.add('active');
+        searchInput.placeholder = 'Search inside documents...';
+
+        // Trigger content search if there's a query
+        const query = searchInput.value.trim();
+        if (query) {
+            performContentSearch(query);
+        }
+    }
+}
+
+async function performContentSearch(query) {
+    if (!query) {
+        // Empty query - show all projects
+        document.getElementById('content-search-results').style.display = 'none';
+        document.getElementById('projects-container').style.display = 'grid';
+        return;
+    }
+
+    const data = await searchContent(query);
+    renderContentSearchResults(data);
 }
 
 // Initialize the page when DOM is ready

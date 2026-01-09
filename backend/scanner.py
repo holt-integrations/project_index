@@ -14,11 +14,13 @@ try:
     from .models import Document, Project, Manifest, GitInfo, GitCommit
     from . import config
     from . import git_utils
+    from . import search_index
 except ImportError:
     # Fall back to absolute imports (when run as a script)
     from models import Document, Project, Manifest, GitInfo, GitCommit
     import config
     import git_utils
+    import search_index
 
 
 def is_excluded_dir(dir_path: Path) -> bool:
@@ -251,6 +253,125 @@ def save_manifest(manifest: Manifest, output_path: Path) -> None:
     print(f"\nManifest saved to: {output_path}")
 
 
+def build_search_index(projects: List[Project]) -> None:
+    """
+    Build full-text search index from projects.
+
+    Only runs if ENABLE_FULL_TEXT_SEARCH is True in config.
+    Uses incremental indexing to only re-index changed files.
+    """
+    if not config.ENABLE_FULL_TEXT_SEARCH:
+        return
+
+    print("\n" + "=" * 60)
+    print("Building Search Index")
+    print("=" * 60)
+
+    try:
+        # Initialize search index
+        index = search_index.SearchIndex(config.SEARCH_INDEX_PATH)
+        index.create_index()
+
+        # Get all currently indexed paths
+        indexed_paths = set(index.get_all_indexed_paths())
+        current_paths = set()
+
+        total_docs = 0
+        indexed_count = 0
+        updated_count = 0
+        removed_count = 0
+
+        # Index documents from all projects
+        for project in projects:
+            for doc in project.documents:
+                total_docs += 1
+                current_paths.add(doc.path)
+
+                # Read document content
+                try:
+                    with open(doc.path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                except Exception as e:
+                    print(f"  Warning: Could not read {doc.path}: {e}")
+                    continue
+
+                # Check if document needs indexing
+                if config.SEARCH_INCREMENTAL_INDEX:
+                    indexed_doc = index.get_indexed_document(doc.path)
+
+                    if indexed_doc:
+                        # Document exists - check if modified
+                        if doc.modified_time > indexed_doc['modified_time']:
+                            # Modified - re-index
+                            index.update_document(
+                                doc.path,
+                                project.id,
+                                doc.name,
+                                content,
+                                doc.modified_time,
+                                doc.size
+                            )
+                            updated_count += 1
+                        # else: unchanged - skip
+                    else:
+                        # New document - index it
+                        index.index_document(
+                            doc.path,
+                            project.id,
+                            doc.name,
+                            content,
+                            doc.modified_time,
+                            doc.size
+                        )
+                        indexed_count += 1
+                else:
+                    # Full re-index (not incremental)
+                    if doc.path in indexed_paths:
+                        index.update_document(
+                            doc.path,
+                            project.id,
+                            doc.name,
+                            content,
+                            doc.modified_time,
+                            doc.size
+                        )
+                        updated_count += 1
+                    else:
+                        index.index_document(
+                            doc.path,
+                            project.id,
+                            doc.name,
+                            content,
+                            doc.modified_time,
+                            doc.size
+                        )
+                        indexed_count += 1
+
+        # Remove documents that no longer exist
+        removed_paths = indexed_paths - current_paths
+        for path in removed_paths:
+            index.remove_document(path)
+            removed_count += 1
+
+        # Get statistics
+        stats = index.get_stats()
+
+        index.close()
+
+        print(f"\nSearch Index Statistics:")
+        print(f"  Total documents: {total_docs}")
+        print(f"  New: {indexed_count}")
+        print(f"  Updated: {updated_count}")
+        print(f"  Removed: {removed_count}")
+        print(f"  Unchanged: {total_docs - indexed_count - updated_count}")
+        print(f"  Index size: {stats['index_size'] / 1024:.1f} KB")
+        print(f"\nSearch index saved to: {config.SEARCH_INDEX_PATH}")
+
+    except Exception as e:
+        print(f"\nWarning: Search index build failed: {e}")
+        print("Continuing without search index.")
+
+
 def main():
     """Main entry point for the scanner."""
     print("=" * 60)
@@ -266,6 +387,9 @@ def main():
 
     # Save to file
     save_manifest(manifest, config.MANIFEST_PATH)
+
+    # Build search index if enabled
+    build_search_index(projects)
 
     # Print summary
     print()

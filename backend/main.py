@@ -14,8 +14,9 @@ from fastapi.staticfiles import StaticFiles
 
 from . import config
 from . import git_utils
+from . import search_index
 from .models import Manifest, Project
-from .scanner import scan_projects_directory, generate_manifest, save_manifest
+from .scanner import scan_projects_directory, generate_manifest, save_manifest, build_search_index
 
 
 # Create FastAPI app
@@ -251,6 +252,9 @@ async def trigger_scan():
         manifest = generate_manifest(projects, config.PROJECTS_DIR)
         save_manifest(manifest, config.MANIFEST_PATH)
 
+        # Build search index if enabled
+        build_search_index(projects)
+
         return {
             "status": "success",
             "message": "Scan completed successfully",
@@ -263,6 +267,59 @@ async def trigger_scan():
         raise HTTPException(
             status_code=500,
             detail=f"Scan failed: {str(e)}"
+        )
+
+
+@app.get("/api/search")
+async def search_documents(
+    q: str = Query(..., description="Search query"),
+    project: Optional[str] = Query(None, description="Filter by project ID"),
+    limit: int = Query(50, ge=1, le=config.SEARCH_MAX_RESULTS, description="Maximum results to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset")
+):
+    """
+    Full-text search across all documents.
+
+    Requires ENABLE_FULL_TEXT_SEARCH to be enabled in config.
+    Supports FTS5 query syntax:
+    - Phrase search: "exact phrase"
+    - Boolean: term1 AND term2, term1 OR term2, NOT term
+    - Prefix: auth* (matches authentication, authorize, etc.)
+    """
+    if not config.ENABLE_FULL_TEXT_SEARCH:
+        raise HTTPException(
+            status_code=501,
+            detail="Full-text search is not enabled. Set ENABLE_FULL_TEXT_SEARCH=True in backend/config.py"
+        )
+
+    if not config.SEARCH_INDEX_PATH.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="Search index not found. Run a scan to build the index."
+        )
+
+    try:
+        index = search_index.SearchIndex(config.SEARCH_INDEX_PATH)
+        results = index.search(q, project_id=project, limit=limit, offset=offset)
+        index.close()
+
+        return {
+            "query": q,
+            "project_filter": project,
+            "total_results": len(results),
+            "results": results
+        }
+
+    except ValueError as e:
+        # FTS5 query syntax error
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Search failed: {str(e)}"
         )
 
 

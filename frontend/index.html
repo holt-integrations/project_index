@@ -64,6 +64,15 @@
                 <button id="clear-search" class="clear-search" style="display: none;" aria-label="Clear search">×</button>
             </div>
 
+            <div class="search-mode-toggle">
+                <button id="search-mode-files" class="search-mode-btn active" data-mode="files">
+                    Files
+                </button>
+                <button id="search-mode-content" class="search-mode-btn" data-mode="content">
+                    Content
+                </button>
+            </div>
+
             <div class="sort-controls">
                 <label for="sort-select" class="sort-label">Sort by:</label>
                 <select id="sort-select" class="sort-select">
@@ -80,6 +89,8 @@
         <div id="search-results" class="search-results" style="display: none;">
             <span id="results-count"></span>
         </div>
+
+        <div id="content-search-results" class="content-search-results" style="display: none;"></div>
 
         <div id="error-message" class="error-message" style="display: none;"></div>
 

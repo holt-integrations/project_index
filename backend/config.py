@@ -72,3 +72,11 @@ ENABLE_GIT_INTEGRATION = True  # Toggle feature on/off
 GIT_MAX_HISTORY_COMMITS = 200  # Max commits to return in history
 GIT_MAX_DIFF_SIZE = 1 * 1024 * 1024  # 1MB max diff size
 GIT_SCAN_TIMEOUT = 30  # Seconds before git operation times out
+
+# Full-text search settings
+ENABLE_FULL_TEXT_SEARCH = True  # Toggle on/off (disabled by default - opt-in)
+SEARCH_INDEX_PATH = Path(__file__).parent.parent / "data" / "search_index.db"
+SEARCH_MAX_RESULTS = 100  # Maximum results to return per query
+SEARCH_SNIPPET_LENGTH = 150  # Characters in context snippet
+SEARCH_INDEX_CODE_BLOCKS = True  # Whether to index code blocks
+SEARCH_INCREMENTAL_INDEX = True  # Only re-index changed files

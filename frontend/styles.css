@@ -1873,3 +1873,203 @@ html {
         font-size: 0.8125rem;
     }
 }
+
+/* ============================================
+   Full-Text Search Styles
+   ============================================ */
+
+/* Search mode toggle */
+.search-mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-top: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.search-mode-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.search-mode-btn:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+}
+
+.search-mode-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.search-mode-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.search-mode-btn:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(0, 123, 255, 0.5);
+}
+
+/* Content search results */
+.content-search-results {
+    margin-top: 1.5rem;
+}
+
+.content-search-header {
+    margin-bottom: 1.5rem;
+}
+
+.content-search-header h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+
+.content-search-header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+}
+
+.content-search-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.content-search-item {
+    padding: 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    transition: all 0.2s ease;
+}
+
+.content-search-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.content-search-item .result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.result-project-badge {
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    background: var(--primary-color);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.result-title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.result-title:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.result-snippet {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+    font-size: 0.9375rem;
+}
+
+.result-snippet mark {
+    background: rgba(255, 214, 0, 0.4);
+    font-weight: 600;
+    padding: 0.125em 0.25em;
+    border-radius: 2px;
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .result-snippet mark {
+    background: rgba(255, 214, 0, 0.25);
+}
+
+.result-path {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    word-break: break-all;
+}
+
+/* No search results */
+.no-search-results {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}
+
+.no-search-results p:first-child {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.75rem 0;
+}
+
+.search-tip {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    margin: 0;
+}
+
+/* Responsive search styles */
+@media (max-width: 768px) {
+    .search-mode-toggle {
+        margin-top: 0.5rem;
+    }
+
+    .search-mode-btn {
+        padding: 0.4375rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    .content-search-item {
+        padding: 1rem;
+    }
+
+    .content-search-item .result-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .result-title {
+        font-size: 1rem;
+    }
+
+    .result-snippet {
+        font-size: 0.875rem;
+    }
+
+    .result-path {
+        font-size: 0.75rem;
+    }
+}
