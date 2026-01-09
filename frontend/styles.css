@@ -1444,6 +1444,7 @@ html {
     overflow-x: auto;
     max-height: 600px;
     overflow-y: auto;
+    align-items: flex-start;
 }
 
 /* Line numbers */
@@ -1451,10 +1452,10 @@ html {
     display: flex;
     flex-direction: column;
     padding: 1rem 0.75rem 1rem 1rem;
-    background-color: var(--bg-tertiary);
     border-right: 1px solid var(--border-color);
     user-select: none;
     flex-shrink: 0;
+    min-height: 100%;
 }
 
 .line-number {
@@ -1466,6 +1467,7 @@ html {
     cursor: pointer;
     transition: all 0.2s ease;
     min-height: 1.5em;
+    background-color: var(--bg-tertiary);
 }
 
 .line-number:hover {
