@@ -1454,7 +1454,6 @@ html {
     background-color: var(--bg-tertiary);
     border-right: 1px solid var(--border-color);
     user-select: none;
-    overflow: hidden;
     flex-shrink: 0;
 }
 

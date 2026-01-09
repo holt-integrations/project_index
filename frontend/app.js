@@ -1010,8 +1010,7 @@ function enhanceCodeBlocks(container) {
             addCodeFolding(wrapper, lineCount);
         }
 
-        // Sync scroll between line numbers and code
-        setupScrollSync(pre, lineNumbersDiv);
+        // Note: Scroll sync not needed - both children scroll together with parent container
     });
 
     // Setup line highlighting from URL
@@ -1177,13 +1176,6 @@ function createLineNumbers(codeElement, blockId) {
     }
 
     return lineNumbersDiv;
-}
-
-// Setup scroll synchronization
-function setupScrollSync(pre, lineNumbersDiv) {
-    pre.addEventListener('scroll', () => {
-        lineNumbersDiv.scrollTop = pre.scrollTop;
-    });
 }
 
 // Add code folding
