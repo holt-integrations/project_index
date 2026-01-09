@@ -33,6 +33,15 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                         </svg>
                     </button>
+                    <button id="bookmark-toggle" class="theme-toggle" aria-label="Toggle bookmark" title="Toggle bookmark">
+                        <svg id="bookmark-icon-off" class="theme-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                        <svg id="bookmark-icon-on" class="theme-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                    </button>
+                    <a href="/bookmarks.html" class="btn-secondary" style="text-decoration: none;">Bookmarks</a>
                     <a href="/" class="btn-back">← Back to Projects</a>
                 </div>
             </div>
@@ -49,6 +58,27 @@
 
     <script src="app.js"></script>
     <script>
+        // Update bookmark button state
+        function updateBookmarkButton(path) {
+            const bookmarkOffIcon = document.getElementById('bookmark-icon-off');
+            const bookmarkOnIcon = document.getElementById('bookmark-icon-on');
+            const bookmarkBtn = document.getElementById('bookmark-toggle');
+
+            if (!bookmarkOffIcon || !bookmarkOnIcon || !bookmarkBtn) return;
+
+            const bookmarked = isBookmarked(path);
+
+            if (bookmarked) {
+                bookmarkOffIcon.style.display = 'none';
+                bookmarkOnIcon.style.display = 'block';
+                bookmarkBtn.title = 'Remove bookmark';
+            } else {
+                bookmarkOffIcon.style.display = 'block';
+                bookmarkOnIcon.style.display = 'none';
+                bookmarkBtn.title = 'Add bookmark';
+            }
+        }
+
         // Initialize viewer on page load
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -57,6 +87,37 @@
 
             if (docPath) {
                 loadDocument(docPath, projectId);
+
+                // Update bookmark button state
+                updateBookmarkButton(docPath);
+
+                // Set up bookmark toggle button
+                const bookmarkBtn = document.getElementById('bookmark-toggle');
+                if (bookmarkBtn) {
+                    bookmarkBtn.addEventListener('click', () => {
+                        // Get document name from breadcrumb or path
+                        const pathParts = docPath.split('/');
+                        const docName = pathParts[pathParts.length - 1];
+
+                        const isNowBookmarked = toggleBookmark(docPath, projectId, docName);
+                        updateBookmarkButton(docPath);
+
+                        // Show feedback
+                        const message = isNowBookmarked ? 'Bookmark added' : 'Bookmark removed';
+                        const breadcrumbEl = document.getElementById('breadcrumb');
+                        if (breadcrumbEl) {
+                            const feedback = document.createElement('span');
+                            feedback.className = 'bookmark-feedback';
+                            feedback.textContent = message;
+                            feedback.style.cssText = 'margin-left: 1rem; color: var(--primary-color); font-size: 0.875rem; animation: fadeIn 0.3s ease-out;';
+                            breadcrumbEl.appendChild(feedback);
+
+                            setTimeout(() => {
+                                feedback.remove();
+                            }, 2000);
+                        }
+                    });
+                }
             } else {
                 showError('No document path specified');
             }

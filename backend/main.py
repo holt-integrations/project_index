@@ -264,6 +264,19 @@ async def viewer_page():
         raise HTTPException(status_code=404, detail="Viewer page not found")
 
 
+# Serve bookmarks page
+@app.get("/bookmarks.html")
+async def bookmarks_page():
+    """Serve the bookmarks page."""
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+    bookmarks_path = frontend_dir / "bookmarks.html"
+
+    if bookmarks_path.exists():
+        return FileResponse(bookmarks_path)
+    else:
+        raise HTTPException(status_code=404, detail="Bookmarks page not found")
+
+
 # Serve static assets (CSS, JS)
 @app.get("/styles.css")
 async def serve_styles():

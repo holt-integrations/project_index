@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bookmarks - Project Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>Bookmarks</h1>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                        <svg id="theme-icon-light" class="theme-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <svg id="theme-icon-dark" class="theme-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                    <a href="/" class="btn-back">← Back to Projects</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="bookmarks-toolbar">
+            <button id="add-collection-btn" class="btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                New Collection
+            </button>
+            <div style="flex: 1;"></div>
+            <button id="export-bookmarks-btn" class="btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export
+            </button>
+            <button id="import-bookmarks-btn" class="btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Import
+            </button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+
+        <div id="bookmarks-container" class="bookmarks-container">
+            <div class="loading">Loading bookmarks...</div>
+        </div>
+
+        <!-- Add Collection Modal -->
+        <div id="collection-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>New Collection</h2>
+                <input type="text" id="collection-name-input" placeholder="Collection name" class="form-input">
+                <div class="modal-actions">
+                    <button id="cancel-collection-btn" class="btn-secondary">Cancel</button>
+                    <button id="save-collection-btn" class="btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Move to Collection Modal -->
+        <div id="move-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Move to Collection</h2>
+                <select id="collection-select" class="form-input">
+                    <option value="">No Collection</option>
+                </select>
+                <div class="modal-actions">
+                    <button id="cancel-move-btn" class="btn-secondary">Cancel</button>
+                    <button id="save-move-btn" class="btn-primary">Move</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let currentBookmarkPath = null;
+
+        // Show success message
+        function showSuccess(message) {
+            const successEl = document.getElementById('success-message');
+            if (successEl) {
+                successEl.textContent = message;
+                successEl.style.display = 'block';
+                setTimeout(() => {
+                    successEl.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Render bookmarks page
+        function renderBookmarksPage() {
+            const container = document.getElementById('bookmarks-container');
+            if (!container) return;
+
+            const bookmarks = getBookmarks();
+            const collections = getCollections();
+
+            container.innerHTML = '';
+
+            if (bookmarks.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <p>No bookmarks yet. Visit a document and click the bookmark button to add it here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Group bookmarks by collection
+            const grouped = {};
+            bookmarks.forEach(bookmark => {
+                const collectionName = bookmark.collection || '';
+                if (!grouped[collectionName]) {
+                    grouped[collectionName] = [];
+                }
+                grouped[collectionName].push(bookmark);
+            });
+
+            // Render uncategorized bookmarks first
+            if (grouped['']) {
+                const section = createBookmarkSection('Uncategorized', grouped[''], null);
+                container.appendChild(section);
+            }
+
+            // Render each collection
+            collections.forEach(collection => {
+                if (grouped[collection.name]) {
+                    const section = createBookmarkSection(collection.name, grouped[collection.name], collection);
+                    container.appendChild(section);
+                }
+            });
+        }
+
+        function createBookmarkSection(title, bookmarks, collection) {
+            const section = document.createElement('div');
+            section.className = 'bookmark-section';
+
+            const header = document.createElement('div');
+            header.className = 'bookmark-section-header';
+
+            const titleEl = document.createElement('h2');
+            titleEl.textContent = `${title} (${bookmarks.length})`;
+            header.appendChild(titleEl);
+
+            // Add delete collection button
+            if (collection) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-icon-danger';
+                deleteBtn.title = 'Delete collection';
+                deleteBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                `;
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm(`Delete collection "${collection.name}"? Bookmarks will be moved to Uncategorized.`)) {
+                        deleteCollection(collection.name);
+                        renderBookmarksPage();
+                        showSuccess('Collection deleted');
+                    }
+                });
+                header.appendChild(deleteBtn);
+            }
+
+            section.appendChild(header);
+
+            const list = document.createElement('ul');
+            list.className = 'bookmarks-list';
+
+            bookmarks.forEach(bookmark => {
+                const item = document.createElement('li');
+                item.className = 'bookmark-item';
+
+                const link = document.createElement('a');
+                link.href = `/viewer.html?path=${encodeURIComponent(bookmark.path)}&project=${encodeURIComponent(bookmark.projectId)}`;
+                link.className = 'bookmark-link';
+
+                const info = document.createElement('div');
+                info.className = 'bookmark-info';
+
+                const name = document.createElement('div');
+                name.className = 'bookmark-name';
+                name.textContent = bookmark.name;
+
+                const meta = document.createElement('div');
+                meta.className = 'bookmark-meta';
+                meta.innerHTML = `
+                    <span>${bookmark.projectId}</span>
+                    <span>Added ${formatRelativeTime(bookmark.added)}</span>
+                `;
+
+                info.appendChild(name);
+                info.appendChild(meta);
+                link.appendChild(info);
+                item.appendChild(link);
+
+                // Action buttons
+                const actions = document.createElement('div');
+                actions.className = 'bookmark-actions';
+
+                // Move button
+                const moveBtn = document.createElement('button');
+                moveBtn.className = 'btn-icon';
+                moveBtn.title = 'Move to collection';
+                moveBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                `;
+                moveBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openMoveModal(bookmark.path);
+                });
+
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-icon-danger';
+                deleteBtn.title = 'Remove bookmark';
+                deleteBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                `;
+                deleteBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    removeBookmark(bookmark.path);
+                    renderBookmarksPage();
+                    showSuccess('Bookmark removed');
+                });
+
+                actions.appendChild(moveBtn);
+                actions.appendChild(deleteBtn);
+                item.appendChild(actions);
+
+                list.appendChild(item);
+            });
+
+            section.appendChild(list);
+            return section;
+        }
+
+        // Collection modal
+        function openCollectionModal() {
+            const modal = document.getElementById('collection-modal');
+            const input = document.getElementById('collection-name-input');
+            if (modal && input) {
+                modal.style.display = 'flex';
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function closeCollectionModal() {
+            const modal = document.getElementById('collection-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Move modal
+        function openMoveModal(bookmarkPath) {
+            currentBookmarkPath = bookmarkPath;
+            const modal = document.getElementById('move-modal');
+            const select = document.getElementById('collection-select');
+
+            if (modal && select) {
+                // Populate collections
+                const collections = getCollections();
+                const bookmarks = getBookmarks();
+                const bookmark = bookmarks.find(b => b.path === bookmarkPath);
+
+                select.innerHTML = '<option value="">No Collection</option>';
+                collections.forEach(collection => {
+                    const option = document.createElement('option');
+                    option.value = collection.name;
+                    option.textContent = collection.name;
+                    if (bookmark && bookmark.collection === collection.name) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeMoveModal() {
+            const modal = document.getElementById('move-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            currentBookmarkPath = null;
+        }
+
+        // Initialize page
+        window.addEventListener('DOMContentLoaded', () => {
+            renderBookmarksPage();
+
+            // Add collection button
+            document.getElementById('add-collection-btn')?.addEventListener('click', openCollectionModal);
+
+            // Cancel collection button
+            document.getElementById('cancel-collection-btn')?.addEventListener('click', closeCollectionModal);
+
+            // Save collection button
+            document.getElementById('save-collection-btn')?.addEventListener('click', () => {
+                const input = document.getElementById('collection-name-input');
+                const name = input?.value.trim();
+
+                if (!name) {
+                    alert('Please enter a collection name');
+                    return;
+                }
+
+                if (addCollection(name)) {
+                    closeCollectionModal();
+                    renderBookmarksPage();
+                    showSuccess(`Collection "${name}" created`);
+                } else {
+                    alert('Collection already exists');
+                }
+            });
+
+            // Handle Enter key in collection input
+            document.getElementById('collection-name-input')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('save-collection-btn')?.click();
+                }
+            });
+
+            // Cancel move button
+            document.getElementById('cancel-move-btn')?.addEventListener('click', closeMoveModal);
+
+            // Save move button
+            document.getElementById('save-move-btn')?.addEventListener('click', () => {
+                const select = document.getElementById('collection-select');
+                const collectionName = select?.value || null;
+
+                if (currentBookmarkPath) {
+                    moveToCollection(currentBookmarkPath, collectionName);
+                    closeMoveModal();
+                    renderBookmarksPage();
+                    showSuccess('Bookmark moved');
+                }
+            });
+
+            // Export button
+            document.getElementById('export-bookmarks-btn')?.addEventListener('click', () => {
+                exportBookmarks();
+                showSuccess('Bookmarks exported');
+            });
+
+            // Import button
+            document.getElementById('import-bookmarks-btn')?.addEventListener('click', () => {
+                document.getElementById('import-file-input')?.click();
+            });
+
+            // Import file input
+            document.getElementById('import-file-input')?.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        if (importBookmarks(event.target.result)) {
+                            renderBookmarksPage();
+                            showSuccess('Bookmarks imported');
+                        } else {
+                            alert('Failed to import bookmarks. Please check the file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            // Close modals on background click
+            document.getElementById('collection-modal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'collection-modal') {
+                    closeCollectionModal();
+                }
+            });
+
+            document.getElementById('move-modal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'move-modal') {
+                    closeMoveModal();
+                }
+            });
+
+            // Listen for bookmark changes
+            window.addEventListener('bookmarksChanged', () => {
+                renderBookmarksPage();
+            });
+        });
+    </script>
+</body>
+</html>

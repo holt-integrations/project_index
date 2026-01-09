@@ -77,6 +77,196 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Bookmarks Management
+ */
+
+// Bookmark data structure:
+// {
+//   path: string (unique identifier),
+//   projectId: string,
+//   name: string,
+//   added: timestamp,
+//   collection: string (optional)
+// }
+
+function getBookmarks() {
+    const stored = localStorage.getItem('bookmarks');
+    if (!stored) return [];
+
+    try {
+        return JSON.parse(stored);
+    } catch (e) {
+        console.error('Error parsing bookmarks:', e);
+        return [];
+    }
+}
+
+function saveBookmarks(bookmarks) {
+    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+    // Dispatch custom event for UI updates
+    window.dispatchEvent(new CustomEvent('bookmarksChanged', { detail: bookmarks }));
+}
+
+function addBookmark(path, projectId, name, collection = null) {
+    const bookmarks = getBookmarks();
+
+    // Check if already bookmarked
+    if (bookmarks.some(b => b.path === path)) {
+        return false;
+    }
+
+    const bookmark = {
+        path,
+        projectId,
+        name,
+        added: new Date().toISOString(),
+        collection
+    };
+
+    bookmarks.push(bookmark);
+    saveBookmarks(bookmarks);
+    return true;
+}
+
+function removeBookmark(path) {
+    const bookmarks = getBookmarks();
+    const filtered = bookmarks.filter(b => b.path !== path);
+    saveBookmarks(filtered);
+}
+
+function isBookmarked(path) {
+    const bookmarks = getBookmarks();
+    return bookmarks.some(b => b.path === path);
+}
+
+function toggleBookmark(path, projectId, name) {
+    if (isBookmarked(path)) {
+        removeBookmark(path);
+        return false;
+    } else {
+        addBookmark(path, projectId, name);
+        return true;
+    }
+}
+
+function getCollections() {
+    const stored = localStorage.getItem('bookmark-collections');
+    if (!stored) return [];
+
+    try {
+        return JSON.parse(stored);
+    } catch (e) {
+        console.error('Error parsing collections:', e);
+        return [];
+    }
+}
+
+function saveCollections(collections) {
+    localStorage.setItem('bookmark-collections', JSON.stringify(collections));
+}
+
+function addCollection(name) {
+    const collections = getCollections();
+
+    // Check if collection already exists
+    if (collections.some(c => c.name === name)) {
+        return false;
+    }
+
+    collections.push({
+        name,
+        created: new Date().toISOString()
+    });
+
+    saveCollections(collections);
+    return true;
+}
+
+function deleteCollection(name) {
+    const collections = getCollections();
+    const filtered = collections.filter(c => c.name !== name);
+    saveCollections(filtered);
+
+    // Remove collection from all bookmarks
+    const bookmarks = getBookmarks();
+    bookmarks.forEach(b => {
+        if (b.collection === name) {
+            b.collection = null;
+        }
+    });
+    saveBookmarks(bookmarks);
+}
+
+function moveToCollection(bookmarkPath, collectionName) {
+    const bookmarks = getBookmarks();
+    const bookmark = bookmarks.find(b => b.path === bookmarkPath);
+
+    if (bookmark) {
+        bookmark.collection = collectionName;
+        saveBookmarks(bookmarks);
+    }
+}
+
+function exportBookmarks() {
+    const data = {
+        bookmarks: getBookmarks(),
+        collections: getCollections(),
+        exportDate: new Date().toISOString()
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bookmarks-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importBookmarks(jsonData) {
+    try {
+        const data = JSON.parse(jsonData);
+
+        if (data.bookmarks && Array.isArray(data.bookmarks)) {
+            const existing = getBookmarks();
+
+            // Merge bookmarks, avoiding duplicates
+            const merged = [...existing];
+            data.bookmarks.forEach(newBookmark => {
+                if (!merged.some(b => b.path === newBookmark.path)) {
+                    merged.push(newBookmark);
+                }
+            });
+
+            saveBookmarks(merged);
+        }
+
+        if (data.collections && Array.isArray(data.collections)) {
+            const existing = getCollections();
+
+            // Merge collections, avoiding duplicates
+            const merged = [...existing];
+            data.collections.forEach(newCollection => {
+                if (!merged.some(c => c.name === newCollection.name)) {
+                    merged.push(newCollection);
+                }
+            });
+
+            saveCollections(merged);
+        }
+
+        return true;
+    } catch (e) {
+        console.error('Error importing bookmarks:', e);
+        return false;
+    }
+}
+
+/**
  * Fetch manifest data from the API
  */
 async function fetchManifest() {
@@ -364,6 +554,20 @@ function renderProjects(manifest, searchQuery = '', sortOption = 'documents-desc
                 const docName = document.createElement('span');
                 docName.className = 'document-name';
                 docName.textContent = doc.name;
+
+                // Add bookmark indicator if bookmarked
+                if (isBookmarked(doc.path)) {
+                    const bookmarkIcon = document.createElement('svg');
+                    bookmarkIcon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                    bookmarkIcon.setAttribute('width', '14');
+                    bookmarkIcon.setAttribute('height', '14');
+                    bookmarkIcon.setAttribute('fill', 'currentColor');
+                    bookmarkIcon.setAttribute('viewBox', '0 0 24 24');
+                    bookmarkIcon.setAttribute('stroke', 'currentColor');
+                    bookmarkIcon.className = 'bookmark-indicator';
+                    bookmarkIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />';
+                    docName.appendChild(bookmarkIcon);
+                }
 
                 const docPath = document.createElement('span');
                 docPath.className = 'document-path';

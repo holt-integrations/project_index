@@ -2,6 +2,24 @@
 
 Features and enhancements to consider after MVP completion. Organized by category and priority.
 
+**Recommended Implementation Order**
+
+Prefer this list for implementation order (builds from simple to complex). Before beginning development, write a unique planning document to this directory (docs).
+
+- [x] Dark Mode
+- [ ] Bookmarks and Favorites
+- [ ] Interactive Table of Contents
+- [ ] Code Block Enhancements
+- [ ] Git History View
+- [ ] Full-Text Search
+- [ ] PDF Export
+
+**Idea Bank**
+
+- Markdown editor to allow making changes/updates within the app
+- Pretty URLs (routing?)
+
+
 ---
 
 ## Export and Sharing
@@ -23,6 +41,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 
 **Considerations**:
 - PDF generation can be resource-intensive on Raspberry Pi
+- Where should the PDF be written? Recommend a separate location inside the Project Index app.
 - Consider queueing system for multiple exports
 - May need ARM64-compatible headless browser
 
@@ -65,6 +84,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 - Use lightweight search engine (e.g., `lunr.js` client-side or SQLite FTS5)
 - Index document content, headers, code blocks
 - Store index alongside manifest
+- Not the default action. Must be toggled on by the user.
 
 **UI**:
 - Global search bar
@@ -135,7 +155,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 
 ---
 
-### Code Block Enhancements
+### Code Block Enhancements (High Priority)
 **Description**: Improve code block functionality.
 
 **Features**:
@@ -251,7 +271,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 
 ---
 
-### Bookmarks and Favorites
+### Bookmarks and Favorites (High awPriority)
 **Description**: Mark documents for quick access.
 
 **Features**:
@@ -602,7 +622,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 
 ---
 
-## Priority Matrix
+## Suggested Priority
 
 ### High Priority (Next Iteration)
 - PDF Export
