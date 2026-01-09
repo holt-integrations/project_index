@@ -200,11 +200,25 @@ async def get_document(path: str = Query(..., description="Absolute path to the 
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
+            # Try to get git_info from manifest
+            git_info = None
+            manifest = load_manifest()
+            if manifest:
+                # Find the document in the manifest
+                for project in manifest.projects:
+                    for doc in project.documents:
+                        if doc.path == str(file_path):
+                            git_info = doc.git_info
+                            break
+                    if git_info is not None:
+                        break
+
             return {
                 "path": str(file_path),
                 "name": file_path.name,
                 "size": file_size,
-                "content": content
+                "content": content,
+                "git_info": git_info
             }
 
         except UnicodeDecodeError:
