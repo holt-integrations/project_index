@@ -66,3 +66,9 @@ PORT = 8001  # Using 8001 since 8000 is used by signals project
 
 # Maximum file size to read (in bytes) - 10MB
 MAX_FILE_SIZE = 10 * 1024 * 1024
+
+# Git integration settings
+ENABLE_GIT_INTEGRATION = True  # Toggle feature on/off
+GIT_MAX_HISTORY_COMMITS = 200  # Max commits to return in history
+GIT_MAX_DIFF_SIZE = 1 * 1024 * 1024  # 1MB max diff size
+GIT_SCAN_TIMEOUT = 30  # Seconds before git operation times out

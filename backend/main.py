@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import config
+from . import git_utils
 from .models import Manifest, Project
 from .scanner import scan_projects_directory, generate_manifest, save_manifest
 
@@ -248,6 +249,196 @@ async def trigger_scan():
         raise HTTPException(
             status_code=500,
             detail=f"Scan failed: {str(e)}"
+        )
+
+
+@app.get("/api/document/history")
+async def get_document_history(
+    path: str = Query(..., description="Absolute path to the document"),
+    limit: int = Query(50, ge=1, le=config.GIT_MAX_HISTORY_COMMITS, description="Maximum number of commits to return")
+):
+    """
+    Get commit history for a document.
+
+    Requires the document to be in a git repository.
+    """
+    if not config.ENABLE_GIT_INTEGRATION:
+        raise HTTPException(status_code=501, detail="Git integration is disabled")
+
+    try:
+        file_path = Path(path)
+
+        # Security check: ensure file is within projects directory
+        if not is_path_safe(file_path, config.PROJECTS_DIR):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: File is outside the projects directory"
+            )
+
+        # Check if file exists
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+        # Find the git repository root
+        current_dir = file_path.parent
+        repo_root = None
+
+        while current_dir != current_dir.parent:
+            if git_utils.is_git_repository(current_dir):
+                repo_root = current_dir
+                break
+            current_dir = current_dir.parent
+
+        if not repo_root:
+            raise HTTPException(
+                status_code=400,
+                detail="File is not in a git repository"
+            )
+
+        # Get commit history
+        from git import Repo
+        repo = Repo(repo_root)
+        history = git_utils.get_commit_history(repo, file_path, limit)
+
+        return {
+            "path": str(file_path),
+            "total_commits": len(history),
+            "commits": history
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting commit history: {str(e)}"
+        )
+
+
+@app.get("/api/document/diff")
+async def get_document_diff(
+    path: str = Query(..., description="Absolute path to the document"),
+    from_commit: str = Query(..., description="Starting commit SHA"),
+    to_commit: str = Query(..., description="Ending commit SHA")
+):
+    """
+    Get diff between two commits for a document.
+
+    Requires the document to be in a git repository.
+    """
+    if not config.ENABLE_GIT_INTEGRATION:
+        raise HTTPException(status_code=501, detail="Git integration is disabled")
+
+    try:
+        file_path = Path(path)
+
+        # Security check: ensure file is within projects directory
+        if not is_path_safe(file_path, config.PROJECTS_DIR):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: File is outside the projects directory"
+            )
+
+        # Check if file exists
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+        # Find the git repository root
+        current_dir = file_path.parent
+        repo_root = None
+
+        while current_dir != current_dir.parent:
+            if git_utils.is_git_repository(current_dir):
+                repo_root = current_dir
+                break
+            current_dir = current_dir.parent
+
+        if not repo_root:
+            raise HTTPException(
+                status_code=400,
+                detail="File is not in a git repository"
+            )
+
+        # Get diff
+        from git import Repo
+        repo = Repo(repo_root)
+        diff_result = git_utils.get_diff(repo, file_path, from_commit, to_commit)
+
+        return {
+            "path": str(file_path),
+            "from_commit": from_commit,
+            "to_commit": to_commit,
+            "diff": diff_result['diff'],
+            "stats": diff_result['stats']
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting diff: {str(e)}"
+        )
+
+
+@app.get("/api/document/contributors")
+async def get_document_contributors(
+    path: str = Query(..., description="Absolute path to the document")
+):
+    """
+    Get contributors for a document.
+
+    Requires the document to be in a git repository.
+    """
+    if not config.ENABLE_GIT_INTEGRATION:
+        raise HTTPException(status_code=501, detail="Git integration is disabled")
+
+    try:
+        file_path = Path(path)
+
+        # Security check: ensure file is within projects directory
+        if not is_path_safe(file_path, config.PROJECTS_DIR):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: File is outside the projects directory"
+            )
+
+        # Check if file exists
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
+
+        # Find the git repository root
+        current_dir = file_path.parent
+        repo_root = None
+
+        while current_dir != current_dir.parent:
+            if git_utils.is_git_repository(current_dir):
+                repo_root = current_dir
+                break
+            current_dir = current_dir.parent
+
+        if not repo_root:
+            raise HTTPException(
+                status_code=400,
+                detail="File is not in a git repository"
+            )
+
+        # Get contributors
+        from git import Repo
+        repo = Repo(repo_root)
+        contributors = git_utils.get_contributors(repo, file_path)
+
+        return {
+            "path": str(file_path),
+            "contributors": contributors
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting contributors: {str(e)}"
         )
 
 

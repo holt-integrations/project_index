@@ -8,3 +8,6 @@ pydantic-settings==2.7.1
 
 # CORS support
 python-multipart==0.0.20
+
+# Git integration
+GitPython==3.1.43

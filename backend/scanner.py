@@ -11,12 +11,14 @@ from typing import List, Optional
 
 try:
     # Try relative imports (when imported as a module)
-    from .models import Document, Project, Manifest
+    from .models import Document, Project, Manifest, GitInfo, GitCommit
     from . import config
+    from . import git_utils
 except ImportError:
     # Fall back to absolute imports (when run as a script)
-    from models import Document, Project, Manifest
+    from models import Document, Project, Manifest, GitInfo, GitCommit
     import config
+    import git_utils
 
 
 def is_excluded_dir(dir_path: Path) -> bool:
@@ -179,6 +181,28 @@ def scan_projects_directory(base_dir: Path) -> List[Project]:
             if documents:
                 last_modified = max(doc.modified_time for doc in documents)
 
+            # Check if this is a git repository and collect git metadata
+            is_git = git_utils.is_git_repository(item)
+            git_info_dict = {}
+
+            if is_git:
+                git_info_dict = git_utils.get_repository_info(item)
+
+                # Get git metadata for documents
+                try:
+                    from git import Repo
+                    repo = Repo(item)
+
+                    for doc in documents:
+                        last_commit_dict = git_utils.get_last_commit_for_file(repo, Path(doc.path))
+                        if last_commit_dict:
+                            # Convert dict to GitCommit model
+                            last_commit = GitCommit(**last_commit_dict)
+                            doc.git_info = GitInfo(last_commit=last_commit)
+
+                except Exception as e:
+                    print(f"  Warning: Could not get git info for documents in {item.name}: {e}")
+
             project = Project(
                 id=item.name,
                 name=item.name,
@@ -186,11 +210,16 @@ def scan_projects_directory(base_dir: Path) -> List[Project]:
                 description=description,
                 documents=documents,
                 document_count=len(documents),
-                last_modified=last_modified
+                last_modified=last_modified,
+                is_git_repo=is_git,
+                git_remote_url=git_info_dict.get('remote_url'),
+                git_branch=git_info_dict.get('branch'),
+                git_remote_type=git_info_dict.get('remote_type')
             )
 
             projects.append(project)
-            print(f"  Found project: {item.name} ({len(documents)} documents)")
+            git_status = f" [git: {git_info_dict.get('branch', 'N/A')}]" if is_git else ""
+            print(f"  Found project: {item.name} ({len(documents)} documents){git_status}")
 
     return projects
 

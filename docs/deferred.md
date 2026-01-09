@@ -10,13 +10,14 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - [x] Bookmarks and Favorites
 - [x] Interactive Table of Contents
 - [x] Code Block Enhancements
-- [ ] Git History View
+- [x] Git History View
 - [ ] Full-Text Search
 - [ ] PDF Export
 
 **Idea Bank**
 
 - Markdown editor to allow making changes/updates within the app
+	- Optional integration with Apostrophe?
 - Pretty URLs (routing?)
 
 **Tweaks**

@@ -1354,6 +1354,9 @@ async function loadDocument(path, projectId) {
         // Clear container
         container.innerHTML = '';
 
+        // Render git metadata if available (before document content)
+        renderGitMetadata(doc, container);
+
         // Render markdown content
         const rendered = renderMarkdown(doc.content);
         container.appendChild(rendered);
@@ -1484,6 +1487,164 @@ async function initIndexPage() {
             container.innerHTML = '';
         }
     }
+}
+
+/**
+ * Git Integration
+ */
+
+function formatGitDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        return 'today';
+    } else if (diffDays === 1) {
+        return 'yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `${months} month${months > 1 ? 's' : ''} ago`;
+    } else {
+        return date.toLocaleDateString();
+    }
+}
+
+function renderGitMetadata(doc, container) {
+    if (!doc.git_info || !doc.git_info.last_commit) {
+        return; // No git metadata available
+    }
+
+    const gitInfo = doc.git_info.last_commit;
+    const gitMetadata = document.createElement('div');
+    gitMetadata.className = 'git-metadata';
+
+    const timeAgo = formatGitDate(gitInfo.date);
+
+    gitMetadata.innerHTML = `
+        <div class="git-last-commit">
+            <svg class="git-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <span class="git-commit-info">
+                Last updated by <strong>${escapeHtml(gitInfo.author_name)}</strong> ${timeAgo}
+                ${gitInfo.message_short ? ` &middot; <span class="git-commit-message">"${escapeHtml(gitInfo.message_short)}"</span>` : ''}
+            </span>
+            <button class="git-view-history-btn" data-path="${escapeHtml(doc.path)}">
+                View History
+            </button>
+        </div>
+    `;
+
+    container.appendChild(gitMetadata);
+
+    // Set up View History button
+    const historyBtn = gitMetadata.querySelector('.git-view-history-btn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', () => {
+            loadGitHistory(doc.path);
+        });
+    }
+}
+
+async function loadGitHistory(docPath) {
+    try {
+        const response = await fetch(`${API_BASE}/api/document/history?path=${encodeURIComponent(docPath)}&limit=50`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        showGitHistoryModal(data, docPath);
+
+    } catch (error) {
+        console.error('Error loading git history:', error);
+        showError(`Failed to load git history: ${error.message}`);
+    }
+}
+
+function showGitHistoryModal(historyData, docPath) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'git-history-modal';
+    modal.innerHTML = `
+        <div class="git-history-content">
+            <div class="git-history-header">
+                <h3>Commit History</h3>
+                <button class="git-history-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="git-history-body">
+                <div class="commit-list"></div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Render commits
+    const commitList = modal.querySelector('.commit-list');
+    if (historyData.commits.length === 0) {
+        commitList.innerHTML = '<p class="no-commits">No commits found for this file.</p>';
+    } else {
+        historyData.commits.forEach(commit => {
+            const commitItem = document.createElement('div');
+            commitItem.className = 'commit-item';
+
+            const timeAgo = formatGitDate(commit.date);
+
+            commitItem.innerHTML = `
+                <div class="commit-header">
+                    <div class="commit-message">${escapeHtml(commit.message_short)}</div>
+                    <div class="commit-sha" title="${escapeHtml(commit.sha)}">${escapeHtml(commit.sha_short)}</div>
+                </div>
+                <div class="commit-meta">
+                    <span class="commit-author">${escapeHtml(commit.author_name)}</span>
+                    <span class="commit-date">${timeAgo}</span>
+                    ${commit.stats ? `<span class="commit-stats">+${commit.stats.insertions} -${commit.stats.deletions}</span>` : ''}
+                </div>
+                ${commit.message !== commit.message_short ? `<div class="commit-full-message">${escapeHtml(commit.message).replace(/\n/g, '<br>')}</div>` : ''}
+            `;
+
+            commitList.appendChild(commitItem);
+        });
+    }
+
+    // Close button
+    const closeBtn = modal.querySelector('.git-history-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.remove();
+        });
+    }
+
+    // Click outside to close
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+
+    // Escape key to close
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', escapeHandler);
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Initialize the page when DOM is ready
