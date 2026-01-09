@@ -7,7 +7,7 @@ Features and enhancements to consider after MVP completion. Organized by categor
 Prefer this list for implementation order (builds from simple to complex). Before beginning development, write a unique planning document to this directory (docs).
 
 - [x] Dark Mode
-- [ ] Bookmarks and Favorites
+- [x] Bookmarks and Favorites
 - [ ] Interactive Table of Contents
 - [ ] Code Block Enhancements
 - [ ] Git History View
