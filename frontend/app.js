@@ -970,6 +970,7 @@ function enhanceCodeBlocks(container) {
         // Wrap in container
         const wrapper = document.createElement('div');
         wrapper.className = 'code-block-container';
+        wrapper.setAttribute('data-block-id', index);
         pre.parentNode.insertBefore(wrapper, pre);
 
         // Create header
@@ -996,7 +997,7 @@ function enhanceCodeBlocks(container) {
         contentContainer.className = 'code-block-content';
 
         // Add line numbers
-        const lineNumbersDiv = createLineNumbers(codeElement);
+        const lineNumbersDiv = createLineNumbers(codeElement, index);
         contentContainer.appendChild(lineNumbersDiv);
 
         // Move pre into content container
@@ -1149,7 +1150,7 @@ function showCopyFeedback(button, success) {
 }
 
 // Create line numbers
-function createLineNumbers(codeElement) {
+function createLineNumbers(codeElement, blockId) {
     const code = codeElement.textContent;
     const lines = code.split('\n');
     const lineCount = lines.length;
@@ -1164,10 +1165,12 @@ function createLineNumbers(codeElement) {
         lineNum.className = 'line-number';
         lineNum.textContent = i;
         lineNum.setAttribute('data-line', i);
+        lineNum.setAttribute('data-block-id', blockId);
 
         // Click to highlight line
-        lineNum.addEventListener('click', () => {
-            toggleLineHighlight(i);
+        lineNum.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleLineHighlight(blockId, i);
         });
 
         lineNumbersDiv.appendChild(lineNum);
@@ -1217,100 +1220,92 @@ function addCodeFolding(wrapper, lineCount) {
     wrapper.classList.add('code-folded');
 }
 
-// Line highlighting from URL
+// Line highlighting from URL (legacy support)
 function setupLineHighlighting(container) {
     const hash = window.location.hash;
-    if (!hash.startsWith('#L')) return;
+    if (!hash) return;
 
-    const lines = parseLineRange(hash);
-    if (lines.length === 0) return;
+    // Parse hash format: #block-0-L10-L15 or legacy #L10-L15
+    const blockMatch = hash.match(/^#block-(\d+)-L(\d+)(?:-L(\d+))?$/);
 
-    highlightLines(container, lines);
+    if (blockMatch) {
+        const blockId = parseInt(blockMatch[1]);
+        const start = parseInt(blockMatch[2]);
+        const end = blockMatch[3] ? parseInt(blockMatch[3]) : start;
 
-    // Scroll to first highlighted line
-    const firstLine = container.querySelector(`.line-number[data-line="${lines[0]}"]`);
-    if (firstLine) {
-        setTimeout(() => {
-            firstLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
+        const lines = [];
+        for (let i = start; i <= end; i++) {
+            lines.push(i);
+        }
+
+        highlightLinesInBlock(container, blockId, lines);
     }
 }
 
-// Parse line range from hash (e.g., #L10 or #L10-L15)
-function parseLineRange(hash) {
-    const match = hash.match(/^#L(\d+)(?:-L(\d+))?$/);
-    if (!match) return [];
+// Highlight specific lines in a specific code block
+function highlightLinesInBlock(container, blockId, lines) {
+    // Find the specific code block
+    const codeBlock = container.querySelector(`.code-block-container[data-block-id="${blockId}"]`);
+    if (!codeBlock) return;
 
-    const start = parseInt(match[1]);
-    const end = match[2] ? parseInt(match[2]) : start;
-
-    const lines = [];
-    for (let i = start; i <= end; i++) {
-        lines.push(i);
-    }
-    return lines;
-}
-
-// Highlight specific lines
-function highlightLines(container, lines) {
-    // Remove existing highlights
-    container.querySelectorAll('.line-highlight').forEach(el => {
+    // Remove existing highlights in this block
+    codeBlock.querySelectorAll('.line-highlight').forEach(el => {
         el.classList.remove('line-highlight');
+        el.style.backgroundColor = '';
     });
 
     // Add highlights
     lines.forEach(lineNum => {
-        const lineElement = container.querySelector(`.line-number[data-line="${lineNum}"]`);
+        const lineElement = codeBlock.querySelector(`.line-number[data-line="${lineNum}"][data-block-id="${blockId}"]`);
         if (lineElement) {
             lineElement.classList.add('line-highlight');
-
-            // Also highlight the corresponding code line
-            // This requires matching the line number to the code
-            const pre = lineElement.closest('.code-block-container')?.querySelector('pre');
-            if (pre) {
-                // Add data attribute for CSS targeting
-                lineElement.style.backgroundColor = 'var(--highlight-line-bg)';
-            }
         }
     });
+
+    // Scroll to first highlighted line in this block
+    if (lines.length > 0) {
+        const firstLine = codeBlock.querySelector(`.line-number[data-line="${lines[0]}"]`);
+        if (firstLine) {
+            // Prevent automatic scroll jump by using setTimeout
+            setTimeout(() => {
+                firstLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }
 }
 
 // Toggle line highlight (click line number)
-function toggleLineHighlight(lineNum) {
-    const hash = window.location.hash;
-    const currentLines = parseLineRange(hash);
+function toggleLineHighlight(blockId, lineNum) {
+    const container = document.getElementById('document-container');
+    const codeBlock = container?.querySelector(`.code-block-container[data-block-id="${blockId}"]`);
+    if (!codeBlock) return;
 
-    let newHash;
+    // Get currently highlighted lines in this block
+    const highlightedElements = codeBlock.querySelectorAll('.line-number.line-highlight');
+    const currentLines = Array.from(highlightedElements).map(el => parseInt(el.getAttribute('data-line')));
+
+    let newLines;
     if (currentLines.includes(lineNum)) {
         // Remove this line
-        const filtered = currentLines.filter(l => l !== lineNum);
-        if (filtered.length === 0) {
-            newHash = '';
-        } else if (filtered.length === 1) {
-            newHash = `#L${filtered[0]}`;
-        } else {
-            newHash = `#L${Math.min(...filtered)}-L${Math.max(...filtered)}`;
-        }
+        newLines = currentLines.filter(l => l !== lineNum);
     } else {
         // Add this line
-        const allLines = [...currentLines, lineNum].sort((a, b) => a - b);
-        if (allLines.length === 1) {
-            newHash = `#L${allLines[0]}`;
-        } else {
-            newHash = `#L${Math.min(...allLines)}-L${Math.max(...allLines)}`;
-        }
+        newLines = [...currentLines, lineNum].sort((a, b) => a - b);
     }
 
-    if (newHash === '') {
-        history.pushState(null, null, window.location.pathname + window.location.search);
+    // Update highlights
+    highlightLinesInBlock(container, blockId, newLines);
+
+    // Update URL hash (optional - for sharing)
+    if (newLines.length === 0) {
+        // Remove hash without scrolling
+        history.replaceState(null, null, window.location.pathname + window.location.search);
+    } else if (newLines.length === 1) {
+        history.replaceState(null, null, `#block-${blockId}-L${newLines[0]}`);
     } else {
-        window.location.hash = newHash;
-    }
-
-    // Re-apply highlighting
-    const container = document.getElementById('document-container');
-    if (container) {
-        setupLineHighlighting(container);
+        const min = Math.min(...newLines);
+        const max = Math.max(...newLines);
+        history.replaceState(null, null, `#block-${blockId}-L${min}-L${max}`);
     }
 }
 
