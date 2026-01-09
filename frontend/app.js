@@ -951,6 +951,370 @@ function toggleTOC() {
 }
 
 /**
+ * Code Block Enhancements
+ */
+
+// Main function to enhance all code blocks
+function enhanceCodeBlocks(container) {
+    if (!container) return;
+
+    const codeBlocks = container.querySelectorAll('pre code');
+
+    codeBlocks.forEach((codeElement, index) => {
+        const pre = codeElement.parentElement;
+        if (!pre || pre.classList.contains('enhanced')) return;
+
+        // Mark as enhanced to avoid duplicate processing
+        pre.classList.add('enhanced');
+
+        // Wrap in container
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-block-container';
+        pre.parentNode.insertBefore(wrapper, pre);
+
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+
+        // Add language badge
+        const language = getCodeLanguage(codeElement);
+        if (language) {
+            const badge = document.createElement('span');
+            badge.className = 'code-language-badge';
+            badge.textContent = language;
+            header.appendChild(badge);
+        }
+
+        // Add copy button
+        const copyBtn = createCopyButton(codeElement);
+        header.appendChild(copyBtn);
+
+        wrapper.appendChild(header);
+
+        // Create content container
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'code-block-content';
+
+        // Add line numbers
+        const lineNumbersDiv = createLineNumbers(codeElement);
+        contentContainer.appendChild(lineNumbersDiv);
+
+        // Move pre into content container
+        contentContainer.appendChild(pre);
+        wrapper.appendChild(contentContainer);
+
+        // Add code folding if needed
+        const lineCount = codeElement.textContent.split('\n').length;
+        if (lineCount > 30) {
+            addCodeFolding(wrapper, lineCount);
+        }
+
+        // Sync scroll between line numbers and code
+        setupScrollSync(pre, lineNumbersDiv);
+    });
+
+    // Setup line highlighting from URL
+    setupLineHighlighting(container);
+}
+
+// Get language from code element
+function getCodeLanguage(codeElement) {
+    // Check for language class (e.g., language-javascript, js, javascript)
+    const classes = codeElement.className.split(' ');
+    for (const cls of classes) {
+        if (cls.startsWith('language-')) {
+            return formatLanguageName(cls.substring(9));
+        }
+        if (cls.startsWith('hljs-')) continue; // Skip highlight.js classes
+        if (cls.length > 0 && cls !== 'hljs') {
+            return formatLanguageName(cls);
+        }
+    }
+    return null;
+}
+
+// Format language name for display
+function formatLanguageName(lang) {
+    const names = {
+        'js': 'JavaScript',
+        'javascript': 'JavaScript',
+        'ts': 'TypeScript',
+        'typescript': 'TypeScript',
+        'py': 'Python',
+        'python': 'Python',
+        'rb': 'Ruby',
+        'ruby': 'Ruby',
+        'java': 'Java',
+        'cpp': 'C++',
+        'c': 'C',
+        'cs': 'C#',
+        'csharp': 'C#',
+        'php': 'PHP',
+        'go': 'Go',
+        'rust': 'Rust',
+        'swift': 'Swift',
+        'kotlin': 'Kotlin',
+        'bash': 'Bash',
+        'sh': 'Shell',
+        'shell': 'Shell',
+        'sql': 'SQL',
+        'html': 'HTML',
+        'css': 'CSS',
+        'json': 'JSON',
+        'xml': 'XML',
+        'yaml': 'YAML',
+        'yml': 'YAML',
+        'md': 'Markdown',
+        'markdown': 'Markdown',
+    };
+    return names[lang.toLowerCase()] || lang.charAt(0).toUpperCase() + lang.slice(1);
+}
+
+// Create copy button
+function createCopyButton(codeElement) {
+    const button = document.createElement('button');
+    button.className = 'code-copy-btn';
+    button.setAttribute('aria-label', 'Copy code');
+    button.title = 'Copy code';
+
+    // Copy icon SVG
+    button.innerHTML = `
+        <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        <svg class="check-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+    `;
+
+    button.addEventListener('click', () => {
+        copyCodeToClipboard(codeElement, button);
+    });
+
+    return button;
+}
+
+// Copy code to clipboard
+async function copyCodeToClipboard(codeElement, button) {
+    const code = codeElement.textContent;
+
+    try {
+        // Try modern clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(code);
+            showCopyFeedback(button, true);
+        } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showCopyFeedback(button, success);
+        }
+    } catch (err) {
+        console.error('Failed to copy code:', err);
+        showCopyFeedback(button, false);
+    }
+}
+
+// Show copy feedback
+function showCopyFeedback(button, success) {
+    const copyIcon = button.querySelector('.copy-icon');
+    const checkIcon = button.querySelector('.check-icon');
+
+    if (!copyIcon || !checkIcon) return;
+
+    if (success) {
+        copyIcon.style.display = 'none';
+        checkIcon.style.display = 'block';
+        button.classList.add('copied');
+        button.title = 'Copied!';
+
+        setTimeout(() => {
+            copyIcon.style.display = 'block';
+            checkIcon.style.display = 'none';
+            button.classList.remove('copied');
+            button.title = 'Copy code';
+        }, 2000);
+    } else {
+        button.title = 'Copy failed';
+        setTimeout(() => {
+            button.title = 'Copy code';
+        }, 2000);
+    }
+}
+
+// Create line numbers
+function createLineNumbers(codeElement) {
+    const code = codeElement.textContent;
+    const lines = code.split('\n');
+    const lineCount = lines.length;
+
+    const lineNumbersDiv = document.createElement('div');
+    lineNumbersDiv.className = 'line-numbers';
+    lineNumbersDiv.setAttribute('aria-hidden', 'true');
+
+    // Create line number elements
+    for (let i = 1; i <= lineCount; i++) {
+        const lineNum = document.createElement('span');
+        lineNum.className = 'line-number';
+        lineNum.textContent = i;
+        lineNum.setAttribute('data-line', i);
+
+        // Click to highlight line
+        lineNum.addEventListener('click', () => {
+            toggleLineHighlight(i);
+        });
+
+        lineNumbersDiv.appendChild(lineNum);
+    }
+
+    return lineNumbersDiv;
+}
+
+// Setup scroll synchronization
+function setupScrollSync(pre, lineNumbersDiv) {
+    pre.addEventListener('scroll', () => {
+        lineNumbersDiv.scrollTop = pre.scrollTop;
+    });
+}
+
+// Add code folding
+function addCodeFolding(wrapper, lineCount) {
+    const foldButton = document.createElement('button');
+    foldButton.className = 'code-fold-toggle';
+    foldButton.setAttribute('aria-expanded', 'true');
+
+    const hiddenLines = lineCount - 10;
+    foldButton.innerHTML = `
+        <span class="fold-expand">Show ${hiddenLines} more lines</span>
+        <span class="fold-collapse" style="display: none;">Collapse</span>
+    `;
+
+    wrapper.appendChild(foldButton);
+
+    foldButton.addEventListener('click', () => {
+        const isExpanded = wrapper.classList.toggle('code-folded');
+        foldButton.setAttribute('aria-expanded', !isExpanded);
+
+        const expandText = foldButton.querySelector('.fold-expand');
+        const collapseText = foldButton.querySelector('.fold-collapse');
+
+        if (isExpanded) {
+            expandText.style.display = 'inline';
+            collapseText.style.display = 'none';
+        } else {
+            expandText.style.display = 'none';
+            collapseText.style.display = 'inline';
+        }
+    });
+
+    // Start collapsed
+    wrapper.classList.add('code-folded');
+}
+
+// Line highlighting from URL
+function setupLineHighlighting(container) {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#L')) return;
+
+    const lines = parseLineRange(hash);
+    if (lines.length === 0) return;
+
+    highlightLines(container, lines);
+
+    // Scroll to first highlighted line
+    const firstLine = container.querySelector(`.line-number[data-line="${lines[0]}"]`);
+    if (firstLine) {
+        setTimeout(() => {
+            firstLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    }
+}
+
+// Parse line range from hash (e.g., #L10 or #L10-L15)
+function parseLineRange(hash) {
+    const match = hash.match(/^#L(\d+)(?:-L(\d+))?$/);
+    if (!match) return [];
+
+    const start = parseInt(match[1]);
+    const end = match[2] ? parseInt(match[2]) : start;
+
+    const lines = [];
+    for (let i = start; i <= end; i++) {
+        lines.push(i);
+    }
+    return lines;
+}
+
+// Highlight specific lines
+function highlightLines(container, lines) {
+    // Remove existing highlights
+    container.querySelectorAll('.line-highlight').forEach(el => {
+        el.classList.remove('line-highlight');
+    });
+
+    // Add highlights
+    lines.forEach(lineNum => {
+        const lineElement = container.querySelector(`.line-number[data-line="${lineNum}"]`);
+        if (lineElement) {
+            lineElement.classList.add('line-highlight');
+
+            // Also highlight the corresponding code line
+            // This requires matching the line number to the code
+            const pre = lineElement.closest('.code-block-container')?.querySelector('pre');
+            if (pre) {
+                // Add data attribute for CSS targeting
+                lineElement.style.backgroundColor = 'var(--highlight-line-bg)';
+            }
+        }
+    });
+}
+
+// Toggle line highlight (click line number)
+function toggleLineHighlight(lineNum) {
+    const hash = window.location.hash;
+    const currentLines = parseLineRange(hash);
+
+    let newHash;
+    if (currentLines.includes(lineNum)) {
+        // Remove this line
+        const filtered = currentLines.filter(l => l !== lineNum);
+        if (filtered.length === 0) {
+            newHash = '';
+        } else if (filtered.length === 1) {
+            newHash = `#L${filtered[0]}`;
+        } else {
+            newHash = `#L${Math.min(...filtered)}-L${Math.max(...filtered)}`;
+        }
+    } else {
+        // Add this line
+        const allLines = [...currentLines, lineNum].sort((a, b) => a - b);
+        if (allLines.length === 1) {
+            newHash = `#L${allLines[0]}`;
+        } else {
+            newHash = `#L${Math.min(...allLines)}-L${Math.max(...allLines)}`;
+        }
+    }
+
+    if (newHash === '') {
+        history.pushState(null, null, window.location.pathname + window.location.search);
+    } else {
+        window.location.hash = newHash;
+    }
+
+    // Re-apply highlighting
+    const container = document.getElementById('document-container');
+    if (container) {
+        setupLineHighlighting(container);
+    }
+}
+
+/**
  * Load and display a document
  */
 async function loadDocument(path, projectId) {
@@ -1006,6 +1370,9 @@ async function loadDocument(path, projectId) {
         // Render markdown content
         const rendered = renderMarkdown(doc.content);
         container.appendChild(rendered);
+
+        // Enhance code blocks
+        enhanceCodeBlocks(rendered);
 
         // Generate TOC after markdown is rendered
         // Wait a bit for mermaid diagrams to render

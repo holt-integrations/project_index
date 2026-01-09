@@ -9,7 +9,7 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - [x] Dark Mode
 - [x] Bookmarks and Favorites
 - [x] Interactive Table of Contents
-- [ ] Code Block Enhancements
+- [x] Code Block Enhancements
 - [ ] Git History View
 - [ ] Full-Text Search
 - [ ] PDF Export
@@ -19,6 +19,9 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - Markdown editor to allow making changes/updates within the app
 - Pretty URLs (routing?)
 
+**Tweaks**
+
+- ToC: default to fully collapsed
 
 ---
 
