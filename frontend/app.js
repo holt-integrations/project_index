@@ -6,6 +6,77 @@
 const API_BASE = window.location.origin;
 
 /**
+ * Dark Mode Management
+ */
+function initTheme() {
+    // Check localStorage for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Use saved theme, or fall back to system preference
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeIcon(theme);
+    updateHighlightTheme(theme);
+}
+
+function updateThemeIcon(theme) {
+    const lightIcon = document.getElementById('theme-icon-light');
+    const darkIcon = document.getElementById('theme-icon-dark');
+
+    if (!lightIcon || !darkIcon) return;
+
+    if (theme === 'dark') {
+        lightIcon.style.display = 'none';
+        darkIcon.style.display = 'block';
+    } else {
+        lightIcon.style.display = 'block';
+        darkIcon.style.display = 'none';
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    // Update DOM
+    document.documentElement.setAttribute('data-theme', newTheme);
+    updateThemeIcon(newTheme);
+    updateHighlightTheme(newTheme);
+
+    // Save preference
+    localStorage.setItem('theme', newTheme);
+}
+
+function updateHighlightTheme(theme) {
+    const lightTheme = document.getElementById('highlight-light');
+    const darkTheme = document.getElementById('highlight-dark');
+
+    if (!lightTheme || !darkTheme) return;
+
+    if (theme === 'dark') {
+        lightTheme.disabled = true;
+        darkTheme.disabled = false;
+    } else {
+        lightTheme.disabled = false;
+        darkTheme.disabled = true;
+    }
+}
+
+// Initialize theme immediately
+initTheme();
+
+// Set up theme toggle button
+document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+});
+
+/**
  * Fetch manifest data from the API
  */
 async function fetchManifest() {
