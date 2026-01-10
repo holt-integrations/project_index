@@ -603,7 +603,14 @@ function initMermaid() {
  * Configure marked.js with syntax highlighting
  */
 function configureMarked() {
-    if (typeof marked === 'undefined') return;
+    if (typeof marked === 'undefined') {
+        console.warn('marked.js not loaded');
+        return;
+    }
+    if (typeof hljs === 'undefined') {
+        console.warn('highlight.js not loaded - syntax highlighting will not work');
+        return;
+    }
 
     // Configure marked to use highlight.js for code blocks
     marked.setOptions({
@@ -615,11 +622,19 @@ function configureMarked() {
                     console.error('Highlighting error:', err);
                 }
             }
-            return hljs.highlightAuto(code).value;
+            // Auto-detect language if not specified
+            try {
+                return hljs.highlightAuto(code).value;
+            } catch (err) {
+                console.error('Auto-highlighting error:', err);
+                return code; // Return plain code if highlighting fails
+            }
         },
         breaks: true,
         gfm: true, // GitHub Flavored Markdown
     });
+
+    console.log('Marked configured with highlight.js support');
 }
 
 /**
@@ -966,6 +981,12 @@ function enhanceCodeBlocks(container) {
 
         // Mark as enhanced to avoid duplicate processing
         pre.classList.add('enhanced');
+
+        // Ensure .hljs class is present for CSS styling
+        // (highlight.js adds spans with classes, but we need .hljs on the code element)
+        if (typeof hljs !== 'undefined' && !codeElement.classList.contains('hljs')) {
+            codeElement.classList.add('hljs');
+        }
 
         // Wrap in container
         const wrapper = document.createElement('div');

@@ -611,6 +611,7 @@ header h1 {
     word-wrap: normal;
     background-color: transparent;
     border: 0;
+    /* Don't set color - let highlight.js handle it */
 }
 
 .markdown-body table {
@@ -1514,6 +1515,17 @@ html {
     line-height: 1.5;
     display: block;
     overflow: visible;
+    /* Don't set color here - let highlight.js handle it */
+}
+
+/* Ensure highlight.js can apply its background and colors */
+.code-block-container pre code.hljs {
+    background: transparent !important;
+}
+
+/* Fallback colors for non-highlighted code blocks */
+.code-block-container pre code:not(.hljs) {
+    color: var(--text-primary);
 }
 
 /* Code folding */
