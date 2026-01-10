@@ -16,9 +16,9 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 
 **Tweaks**
 
-- [x] When in dark mode, the text entered into the search field is hard to read because it is dark text on a dark background. Perhaps it is not being addressed in the stylesheet. 
+- [x] When in dark mode, the text entered into the search field is hard to read because it is dark text on a dark background. Perhaps it is not being addressed in the stylesheet.
+- [x] Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
 - [ ] Code blocks use color coded syntax for common languages (not plain text)
-- [ ] Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
 - [ ] ToC: default to fully collapsed
 
 **Idea Bank**

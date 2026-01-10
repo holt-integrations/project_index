@@ -50,6 +50,10 @@ logs/
 .env.local
 .env.*.local
 
+# Configuration (exclude user config, keep example)
+config.yaml
+!config.yaml.example
+
 # Temporary files
 *.tmp
 .cache/

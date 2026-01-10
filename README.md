@@ -129,12 +129,80 @@ project_index/
 
 ## Configuration
 
-Configuration is managed in `backend/config.py`. Key settings:
+Project Viewer can be configured via `config.yaml` file or environment variables.
 
-- **PROJECTS_DIR**: Base directory to scan (default: `~/Projects`)
-- **EXCLUDED_DIRS**: Directories to skip during scanning
-- **HOST**: Server host (default: `0.0.0.0`)
-- **PORT**: Server port (default: `8001`)
+### Configuration File
+
+Create `config.yaml` in the project root (copy from `config.yaml.example`):
+
+```yaml
+# Base directory to scan for projects
+projects_directory: "~/Projects"
+
+# Optional: restrict to specific subdirectory (e.g., "docs", "documentation")
+# Leave empty or comment out to scan entire project recursively
+docs_subdirectory: ""
+
+# Include root README.md even when docs_subdirectory is set
+include_root_readme: true
+
+# Server settings
+host: "0.0.0.0"
+port: 8001
+```
+
+### Environment Variables
+
+All settings can be overridden with environment variables using the `PROJECT_VIEWER_` prefix:
+
+```bash
+export PROJECT_VIEWER_PROJECTS_DIRECTORY=/data/documentation
+export PROJECT_VIEWER_DOCS_SUBDIRECTORY=docs
+export PROJECT_VIEWER_HOST=127.0.0.1
+export PROJECT_VIEWER_PORT=8080
+```
+
+### Configuration Precedence
+
+Settings are loaded in this order (highest precedence first):
+1. **Environment variables** (`PROJECT_VIEWER_*`)
+2. **Config file** (`config.yaml`)
+3. **Defaults** (hardcoded in `backend/config.py`)
+
+### Key Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `projects_directory` | `~/Projects` | Base directory containing projects |
+| `docs_subdirectory` | `null` | Optional: restrict search to subfolder (e.g., `"docs"`) |
+| `include_root_readme` | `true` | Include root README.md with docs_subdirectory |
+| `host` | `0.0.0.0` | Server bind address |
+| `port` | `8001` | Server port |
+| `enable_git_integration` | `true` | Enable git history features |
+| `enable_full_text_search` | `true` | Enable full-text search |
+| `enable_pdf_export` | `true` | Enable PDF export |
+
+See `config.yaml.example` for all available settings.
+
+### Examples
+
+**Restrict to docs subdirectory:**
+```yaml
+projects_directory: "~/Projects"
+docs_subdirectory: "docs"  # Only scan project/docs/**/*.md
+include_root_readme: true   # But still include project/README.md
+```
+
+**Use a different base directory:**
+```yaml
+projects_directory: "/data/documentation"
+```
+
+**Environment variable override:**
+```bash
+# Temporarily change projects directory
+PROJECT_VIEWER_PROJECTS_DIRECTORY=/tmp/test python backend/scanner.py
+```
 
 ## Development
 

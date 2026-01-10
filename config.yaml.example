@@ -1,0 +1,122 @@
+# Project Viewer Configuration
+# Copy this file to config.yaml and customize to your needs
+
+# ==============================================================================
+# Directory Configuration
+# ==============================================================================
+
+# Base directory to scan for projects
+# Supports ~ expansion and environment variables like $HOME
+# Default: ~/Projects
+projects_directory: "~/Projects"
+
+# Optional: restrict document search to specific subdirectory within each project
+# Examples: "docs", "documentation", "wiki", "content"
+# Leave empty, null, or comment out to scan entire project recursively (default)
+# docs_subdirectory: ""
+
+# Include root README.md even when docs_subdirectory is set
+# When true, root README.md is always included for project overview
+# Default: true
+include_root_readme: true
+
+# ==============================================================================
+# Server Configuration
+# ==============================================================================
+
+# Server bind address
+# Use "0.0.0.0" to allow external connections
+# Use "127.0.0.1" for localhost only
+# Default: 0.0.0.0
+host: "0.0.0.0"
+
+# Server port
+# Default: 8001
+port: 8001
+
+# ==============================================================================
+# File Processing
+# ==============================================================================
+
+# Maximum file size to read (bytes)
+# Default: 10485760 (10MB)
+max_file_size: 10485760
+
+# ==============================================================================
+# Feature Toggles
+# ==============================================================================
+
+# Enable git history integration (commit history, diffs, contributors)
+# Default: true
+enable_git_integration: true
+
+# Enable full-text search across document contents
+# Default: true
+enable_full_text_search: true
+
+# Enable PDF export functionality
+# Default: true
+enable_pdf_export: true
+
+# ==============================================================================
+# Git Integration Settings
+# ==============================================================================
+
+# Maximum number of commits to return in history view
+# Default: 200
+git_max_history_commits: 200
+
+# Maximum diff size to display (bytes)
+# Default: 1048576 (1MB)
+git_max_diff_size: 1048576
+
+# Git operation timeout (seconds)
+# Default: 30
+git_scan_timeout: 30
+
+# ==============================================================================
+# Full-Text Search Settings
+# ==============================================================================
+
+# Maximum search results to return per query
+# Default: 100
+search_max_results: 100
+
+# Length of context snippet around search matches (characters)
+# Default: 150
+search_snippet_length: 150
+
+# Index code blocks in search (true/false)
+# Default: true
+search_index_code_blocks: true
+
+# Use incremental indexing (only re-index changed files)
+# Default: true
+search_incremental_index: true
+
+# ==============================================================================
+# PDF Export Settings
+# ==============================================================================
+
+# Maximum PDF file size (bytes)
+# Default: 52428800 (50MB)
+pdf_max_file_size: 52428800
+
+# Keep PDF export history (true/false)
+# Default: true
+pdf_keep_history: true
+
+# ==============================================================================
+# Environment Variable Overrides
+# ==============================================================================
+# All settings can be overridden with environment variables using the prefix:
+# PROJECT_VIEWER_<SETTING_NAME>
+#
+# Examples:
+#   export PROJECT_VIEWER_PROJECTS_DIRECTORY=/data/documentation
+#   export PROJECT_VIEWER_DOCS_SUBDIRECTORY=docs
+#   export PROJECT_VIEWER_HOST=127.0.0.1
+#   export PROJECT_VIEWER_PORT=8080
+#   export PROJECT_VIEWER_ENABLE_PDF_EXPORT=false
+#
+# Environment variables take precedence over config file settings.

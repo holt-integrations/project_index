@@ -253,8 +253,12 @@ async def trigger_scan():
     try:
         print("Manual scan triggered via API...")
 
-        # Run the scanner
-        projects = scan_projects_directory(config.PROJECTS_DIR)
+        # Run the scanner (with optional docs subdirectory filtering)
+        projects = scan_projects_directory(
+            config.PROJECTS_DIR,
+            docs_subdirectory=config.DOCS_SUBDIRECTORY,
+            include_root_readme=config.INCLUDE_ROOT_README
+        )
         manifest = generate_manifest(projects, config.PROJECTS_DIR)
         save_manifest(manifest, config.MANIFEST_PATH)
 

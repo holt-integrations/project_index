@@ -99,51 +99,114 @@ def extract_description_from_readme(readme_path: Path) -> Optional[str]:
         return None
 
 
-def find_markdown_files(project_root: Path) -> List[Document]:
+def find_markdown_files(
+    project_root: Path,
+    docs_subdirectory: Optional[str] = None,
+    include_root_readme: bool = True
+) -> List[Document]:
     """
     Recursively find all markdown files in a project directory.
 
-    Excludes files in EXCLUDED_DIRS.
+    Args:
+        project_root: Root directory of the project
+        docs_subdirectory: Optional subdirectory to restrict search (e.g., "docs")
+        include_root_readme: Include root README.md even when docs_subdirectory is set
+
+    Returns:
+        List of Document objects
+
+    Behavior:
+    - If docs_subdirectory is None: searches entire project recursively (current behavior)
+    - If docs_subdirectory is set: only searches within that subdirectory
+    - If include_root_readme is True: also includes README.md in project root
     """
     documents = []
 
-    try:
-        for item in project_root.rglob("*"):
-            # Skip if in an excluded directory
-            if any(is_excluded_dir(parent) for parent in item.parents if parent != project_root):
-                continue
+    # Determine search paths
+    if docs_subdirectory:
+        # Restricted search: only in specified subdirectory
+        search_paths = [project_root / docs_subdirectory]
 
-            # Skip if the item itself is an excluded directory
-            if item.is_dir() and is_excluded_dir(item):
-                continue
-
-            # Process markdown files
-            if item.is_file() and is_markdown_file(item):
+        # Optionally include root README.md as special case
+        if include_root_readme:
+            root_readme = project_root / "README.md"
+            if root_readme.exists() and root_readme.is_file():
                 try:
-                    stat = item.stat()
-                    relative_path = item.relative_to(project_root)
+                    stat = root_readme.stat()
+                    relative_path = root_readme.relative_to(project_root)
 
                     document = Document(
-                        name=item.name,
-                        path=str(item.absolute()),
+                        name=root_readme.name,
+                        path=str(root_readme.absolute()),
                         relative_path=str(relative_path),
                         size=stat.st_size,
                         modified_time=datetime.fromtimestamp(stat.st_mtime)
                     )
                     documents.append(document)
-
                 except Exception as e:
-                    print(f"Warning: Could not process file {item}: {e}")
+                    print(f"Warning: Could not process file {root_readme}: {e}")
+    else:
+        # Full search: entire project (current behavior)
+        search_paths = [project_root]
 
-    except Exception as e:
-        print(f"Error scanning {project_root}: {e}")
+    # Process each search path
+    for search_path in search_paths:
+        if not search_path.exists():
+            # Subdirectory doesn't exist - skip with optional warning
+            if docs_subdirectory:
+                print(f"  Note: {project_root.name} does not have a '{docs_subdirectory}/' subdirectory")
+            continue
+
+        try:
+            for item in search_path.rglob("*"):
+                # Skip if in an excluded directory
+                if any(is_excluded_dir(parent) for parent in item.parents if parent != project_root):
+                    continue
+
+                # Skip if the item itself is an excluded directory
+                if item.is_dir() and is_excluded_dir(item):
+                    continue
+
+                # Process markdown files
+                if item.is_file() and is_markdown_file(item):
+                    # Skip if already added (e.g., root README.md)
+                    if any(doc.path == str(item.absolute()) for doc in documents):
+                        continue
+
+                    try:
+                        stat = item.stat()
+                        relative_path = item.relative_to(project_root)
+
+                        document = Document(
+                            name=item.name,
+                            path=str(item.absolute()),
+                            relative_path=str(relative_path),
+                            size=stat.st_size,
+                            modified_time=datetime.fromtimestamp(stat.st_mtime)
+                        )
+                        documents.append(document)
+
+                    except Exception as e:
+                        print(f"Warning: Could not process file {item}: {e}")
+
+        except Exception as e:
+            print(f"Error scanning {search_path}: {e}")
 
     return documents
 
 
-def scan_projects_directory(base_dir: Path) -> List[Project]:
+def scan_projects_directory(
+    base_dir: Path,
+    docs_subdirectory: Optional[str] = None,
+    include_root_readme: bool = True
+) -> List[Project]:
     """
     Scan the base directory for projects.
+
+    Args:
+        base_dir: Base directory containing projects
+        docs_subdirectory: Optional subdirectory to restrict document search (e.g., "docs")
+        include_root_readme: Include root README.md even when docs_subdirectory is set
 
     A project is any subdirectory that:
     1. Contains a project root marker, OR
@@ -160,6 +223,8 @@ def scan_projects_directory(base_dir: Path) -> List[Project]:
         return projects
 
     print(f"Scanning {base_dir} for projects...")
+    if docs_subdirectory:
+        print(f"  Restricting document search to '{docs_subdirectory}/' subdirectories")
 
     # Iterate through immediate subdirectories
     for item in sorted(base_dir.iterdir()):
@@ -168,7 +233,11 @@ def scan_projects_directory(base_dir: Path) -> List[Project]:
             continue
 
         # Check if this is a project root or contains markdown files
-        documents = find_markdown_files(item)
+        documents = find_markdown_files(
+            item,
+            docs_subdirectory=docs_subdirectory,
+            include_root_readme=include_root_readme
+        )
 
         # Only include if it's a project root OR has markdown files
         if is_project_root(item) or documents:
@@ -379,8 +448,12 @@ def main():
     print("=" * 60)
     print()
 
-    # Scan for projects
-    projects = scan_projects_directory(config.PROJECTS_DIR)
+    # Scan for projects (with optional docs subdirectory filtering)
+    projects = scan_projects_directory(
+        config.PROJECTS_DIR,
+        docs_subdirectory=config.DOCS_SUBDIRECTORY,
+        include_root_readme=config.INCLUDE_ROOT_README
+    )
 
     # Generate manifest
     manifest = generate_manifest(projects, config.PROJECTS_DIR)
