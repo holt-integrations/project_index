@@ -8,21 +8,26 @@ Project Viewer is designed to run on a Raspberry Pi and provides a centralized w
 
 ## Features
 
-**MVP (Current)**:
-- Automatic scanning of `~/Projects` directory
+**Current**:
+- Automatic scanning of configurable project directories
 - Web interface for browsing projects and documentation
 - Rich markdown rendering with syntax highlighting
 - Support for ASCII diagrams and mermaid charts
-- Displays file location within project structure
-- Periodic manifest updates via scheduled task
-
-**Planned** (see `docs/deferred.md`):
 - PDF export functionality
 - Full-text search across all documentation
 - Git integration and version history
-- Dark mode
-- Bookmarks and reading history
-- Advanced filtering and search
+- Dark mode with persistent preferences
+- Bookmarks and favorites
+- Interactive table of contents for long documents
+- Code block enhancements (copy button, line numbers)
+- Configurable via YAML file or environment variables
+- Periodic manifest updates via scheduled task
+
+**Future Enhancements** (see `docs/deferred.md`):
+- Advanced filtering and saved searches
+- Multi-format export (DOCX, ePub, HTML)
+- Real-time file system monitoring
+- AI-powered features
 
 ## Architecture
 
@@ -61,7 +66,7 @@ Project Viewer is designed to run on a Raspberry Pi and provides a centralized w
 
 1. Clone or navigate to this repository:
 ```bash
-cd /home/jared/Projects/project_index
+cd ~/Projects/project_index
 ```
 
 2. Create and activate a virtual environment:
@@ -241,7 +246,7 @@ curl http://localhost:8001/api/projects
 The easiest way to deploy Project Viewer as a systemd service:
 
 ```bash
-cd /home/jared/Projects/project_index
+cd ~/Projects/project_index
 ./deployment/deploy.sh
 ```
 
@@ -364,7 +369,7 @@ Jared Holt
 
 ## Status
 
-**Current Phase**: Phase 6 - Automation and Deployment (Complete)
+**Current Phase**: Post-MVP Enhancement (Ongoing)
 
 **Completed Features**:
 - ✅ Project scanning and manifest generation
@@ -374,7 +379,13 @@ Jared Holt
 - ✅ Mermaid diagram support
 - ✅ Systemd service integration
 - ✅ Automated deployment scripts
+- ✅ Dark mode with theme persistence
+- ✅ Bookmarks and favorites system
+- ✅ Interactive table of contents
+- ✅ Code block enhancements (copy, line numbers)
+- ✅ Git history integration
+- ✅ Full-text search
+- ✅ PDF export functionality
+- ✅ Configurable directories (YAML + env vars)
 
-**Next Phase**: Phase 7 - Polish and Testing
-
-See `docs/plan.md` for detailed implementation roadmap.
+See `docs/plan.md` for detailed implementation roadmap and `docs/deferred.md` for future enhancements.
