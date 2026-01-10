@@ -11,11 +11,12 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - [x] Interactive Table of Contents
 - [x] Code Block Enhancements
 - [x] Git History View
-- [ ] Full-Text Search
+- [x] Full-Text Search
 - [ ] PDF Export
 
 **Tweaks**
 
+- [x] When in dark mode, the text entered into the search field is hard to read because it is dark text on a dark background. Perhaps it is not being addressed in the stylesheet. 
 - [ [ Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
 - [ ] ToC: default to fully collapsed
 
