@@ -17,6 +17,8 @@ from . import git_utils
 from . import search_index
 from .models import Manifest, Project
 from .scanner import scan_projects_directory, generate_manifest, save_manifest, build_search_index
+from .pdf_export import PDFExporter
+from .export_history import ExportHistory
 
 
 # Create FastAPI app
@@ -34,6 +36,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize PDF exporter and export history
+pdf_exporter = PDFExporter(config.PDF_EXPORT_DIR) if config.ENABLE_PDF_EXPORT else None
+export_history = ExportHistory(config.PDF_HISTORY_PATH) if config.ENABLE_PDF_EXPORT else None
 
 
 def load_manifest() -> Optional[Manifest]:
@@ -511,6 +517,146 @@ async def get_document_contributors(
             status_code=500,
             detail=f"Error getting contributors: {str(e)}"
         )
+
+
+@app.post("/api/export/pdf")
+async def export_document_to_pdf(
+    path: str = Query(..., description="Absolute path to the document")
+):
+    """
+    Export a markdown document to PDF.
+
+    Returns the generated PDF file for download.
+    """
+    if not config.ENABLE_PDF_EXPORT:
+        raise HTTPException(
+            status_code=501,
+            detail="PDF export is not enabled"
+        )
+
+    try:
+        file_path = Path(path)
+
+        # Security check
+        if not is_path_safe(file_path, config.PROJECTS_DIR):
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: File is outside the projects directory"
+            )
+
+        # Check if file exists
+        if not file_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found: {path}"
+            )
+
+        # Read markdown content
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                markdown_content = f.read()
+        except UnicodeDecodeError:
+            raise HTTPException(
+                status_code=400,
+                detail="File is not a valid UTF-8 text file"
+            )
+
+        # Find project ID
+        manifest = load_manifest()
+        project_id = "unknown"
+        if manifest:
+            for project in manifest.projects:
+                if any(doc.path == str(file_path) for doc in project.documents):
+                    project_id = project.id
+                    break
+
+        # Generate PDF
+        pdf_path = pdf_exporter.export_to_pdf(
+            markdown_content=markdown_content,
+            document_name=file_path.name,
+            project_id=project_id,
+            source_path=str(file_path)
+        )
+
+        # Record in history
+        pdf_size = pdf_path.stat().st_size
+        export_history.add_export(
+            document_path=str(file_path),
+            project_id=project_id,
+            pdf_path=str(pdf_path),
+            pdf_size=pdf_size
+        )
+
+        # Return PDF file
+        return FileResponse(
+            pdf_path,
+            media_type='application/pdf',
+            filename=pdf_path.name,
+            headers={
+                'Content-Disposition': f'attachment; filename="{pdf_path.name}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"PDF export failed: {str(e)}"
+        )
+
+
+@app.get("/api/export/history")
+async def get_export_history(
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of records"),
+    project: Optional[str] = Query(None, description="Filter by project ID")
+):
+    """Get PDF export history."""
+    if not config.ENABLE_PDF_EXPORT:
+        raise HTTPException(
+            status_code=501,
+            detail="PDF export is not enabled"
+        )
+
+    history = export_history.get_history(limit, project_id=project)
+    stats = export_history.get_stats()
+
+    return {
+        'total': len(history),
+        'exports': history,
+        'stats': stats
+    }
+
+
+@app.get("/api/export/pdf/{filename}")
+async def download_exported_pdf(filename: str):
+    """Download a previously exported PDF."""
+    if not config.ENABLE_PDF_EXPORT:
+        raise HTTPException(
+            status_code=501,
+            detail="PDF export is not enabled"
+        )
+
+    pdf_path = config.PDF_EXPORT_DIR / filename
+
+    if not pdf_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="PDF file not found"
+        )
+
+    # Security check: ensure file is in exports directory
+    if not is_path_safe(pdf_path, config.PDF_EXPORT_DIR):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied"
+        )
+
+    return FileResponse(
+        pdf_path,
+        media_type='application/pdf',
+        filename=filename
+    )
 
 
 # Serve viewer page

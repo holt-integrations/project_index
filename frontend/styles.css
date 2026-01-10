@@ -931,6 +931,17 @@ header h1 {
     border-color: var(--primary-color);
 }
 
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+#export-pdf-btn svg {
+    display: inline-block;
+    flex-shrink: 0;
+}
+
 .btn-primary {
     background-color: var(--primary-color);
     color: white;

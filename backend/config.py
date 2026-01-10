@@ -80,3 +80,10 @@ SEARCH_MAX_RESULTS = 100  # Maximum results to return per query
 SEARCH_SNIPPET_LENGTH = 150  # Characters in context snippet
 SEARCH_INDEX_CODE_BLOCKS = True  # Whether to index code blocks
 SEARCH_INCREMENTAL_INDEX = True  # Only re-index changed files
+
+# PDF Export settings
+ENABLE_PDF_EXPORT = True  # Toggle feature on/off
+PDF_EXPORT_DIR = Path(__file__).parent.parent / "data" / "exports"
+PDF_MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB max PDF size
+PDF_KEEP_HISTORY = True  # Track export history
+PDF_HISTORY_PATH = Path(__file__).parent.parent / "data" / "export_history.json"

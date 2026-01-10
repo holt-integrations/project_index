@@ -42,6 +42,12 @@
                         </svg>
                     </button>
                     <a href="/bookmarks.html" class="btn-secondary" style="text-decoration: none;">Bookmarks</a>
+                    <button id="export-pdf-btn" class="btn-secondary" title="Export to PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export PDF
+                    </button>
                     <a href="/" class="btn-back">← Back to Projects</a>
                 </div>
             </div>
@@ -131,6 +137,77 @@
                             setTimeout(() => {
                                 feedback.remove();
                             }, 2000);
+                        }
+                    });
+                }
+
+                // Set up PDF export button
+                const exportPdfBtn = document.getElementById('export-pdf-btn');
+                if (exportPdfBtn) {
+                    exportPdfBtn.addEventListener('click', async () => {
+                        const originalHTML = exportPdfBtn.innerHTML;
+                        try {
+                            // Show loading state
+                            exportPdfBtn.disabled = true;
+                            exportPdfBtn.innerHTML = '<span>Exporting...</span>';
+
+                            // Call export API
+                            const response = await fetch(
+                                `/api/export/pdf?path=${encodeURIComponent(docPath)}`,
+                                { method: 'POST' }
+                            );
+
+                            if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.detail || 'Export failed');
+                            }
+
+                            // Download the PDF
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+
+                            // Get filename from Content-Disposition header
+                            const contentDisposition = response.headers.get('Content-Disposition');
+                            let filename = 'export.pdf';
+                            if (contentDisposition) {
+                                const match = contentDisposition.match(/filename="(.+)"/);
+                                if (match) filename = match[1];
+                            }
+
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+
+                            // Show success feedback
+                            const breadcrumbEl = document.getElementById('breadcrumb');
+                            if (breadcrumbEl) {
+                                const feedback = document.createElement('span');
+                                feedback.className = 'export-feedback';
+                                feedback.textContent = 'PDF exported successfully!';
+                                feedback.style.cssText = 'margin-left: 1rem; color: var(--success-color); font-size: 0.875rem; animation: fadeIn 0.3s ease-out;';
+                                breadcrumbEl.appendChild(feedback);
+
+                                setTimeout(() => {
+                                    feedback.remove();
+                                }, 3000);
+                            }
+                        } catch (error) {
+                            console.error('PDF export error:', error);
+
+                            // Show error message
+                            const errorMsg = error.message.includes('not enabled')
+                                ? 'PDF export is not enabled on this server'
+                                : `Export failed: ${error.message}`;
+
+                            showError(errorMsg);
+                        } finally {
+                            // Restore button
+                            exportPdfBtn.disabled = false;
+                            exportPdfBtn.innerHTML = originalHTML;
                         }
                     });
                 }

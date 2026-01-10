@@ -12,17 +12,18 @@ Prefer this list for implementation order (builds from simple to complex). Befor
 - [x] Code Block Enhancements
 - [x] Git History View
 - [x] Full-Text Search
-- [ ] PDF Export
+- [x] PDF Export
 
 **Tweaks**
 
 - [x] When in dark mode, the text entered into the search field is hard to read because it is dark text on a dark background. Perhaps it is not being addressed in the stylesheet. 
-- [ [ Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
+- [ ] Code blocks use color coded syntax for common languages (not plain text)
+- [ ] Allow user to config target directory. Default is `~/Projects` but a user may want to customize.
 - [ ] ToC: default to fully collapsed
 
 **Idea Bank**
 
-- "Top of doc" convenience button
+- "Top of doc" button at bottom of page for convenient navigation
 - Open terminal at location
 - Open [editor] at location
 - Markdown editor to allow making changes/updates within the app

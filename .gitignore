@@ -24,6 +24,8 @@ htmlcov/
 # Data (generated files)
 data/manifest.json
 data/search_index.db
+data/exports/
+data/export_history.json
 
 # IDE
 .vscode/
